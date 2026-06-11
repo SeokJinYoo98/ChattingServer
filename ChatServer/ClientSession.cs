@@ -1,50 +1,56 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net.Sockets;
-using System.Text;
-
-namespace MyServer.Client
+﻿using System.Net.Sockets;
+using ChatCommon;
+namespace MyServer.Client;
+public sealed class ClientSession : IDisposable
 {
-    public sealed class ClientSession : IDisposable
+    public TcpClient        Client { get; }
+    public NetworkStream    Stream { get; }
+    public string           ClientInfo { get; }
+
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
+
+    public ClientSession(TcpClient client)
     {
-        public TcpClient Client { get; }
-        public NetworkStream Stream { get; }
-        public string ClientInfo { get; }
+        Client     = client;
+        Stream     = client.GetStream();
+        ClientInfo = client.Client.RemoteEndPoint?.ToString() 
+            ?? "Unknown";
+    }
 
-        private readonly SemaphoreSlim _sendLock =
-            new(1, 1);
+    public async Task SendAsync(ChatMessage message)
+    {
+        byte[] packet = MessageProtocol.Encode(message);
 
-        public ClientSession(TcpClient client)
+        await _sendLock.WaitAsync();
+
+        try
         {
-            Client = client;
-            Stream = client.GetStream();
-            ClientInfo =
-                client.Client.RemoteEndPoint?.ToString() ?? "Unknown";
+            await Stream.WriteAsync(packet);
         }
-
-        public async Task SendAsync(string message)
+        finally
         {
-            await _sendLock.WaitAsync();
-
-            try
-            {
-                await MessageProtocol.SendAsync(
-                    Stream,
-                    message
-                );
-            }
-            finally
-            {
-                _sendLock.Release();
-            }
+            _sendLock.Release();
         }
+    }
+    public async Task<ChatMessage> ReceiveAsync()
+    {
+        byte[] header = new byte[MessageProtocol.HeaderSize];
 
-        public void Dispose()
-        {
-            Stream.Dispose();
-            Client.Dispose();
-            _sendLock.Dispose();
-        }
+        await Stream.ReadExactlyAsync(header);
+
+        int bodyLength = MessageProtocol.DecodeBodyLength(header);
+
+        byte[] body = new byte[bodyLength];
+
+        await Stream.ReadExactlyAsync(body);
+
+        return MessageProtocol.DecodeBody(body);
+    }
+    public void Dispose()
+    {
+        Stream.Dispose();
+        Client.Dispose();
+        _sendLock.Dispose();
     }
 }
 
