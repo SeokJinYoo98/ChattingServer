@@ -72,11 +72,21 @@ namespace ChatClient
 
         private async Task<bool> LoginAsync()
         {
-            Console.Write("아이디: ");
+            Console.Write("아이디 (0: 이전 메뉴): ");
             string? userId = Console.ReadLine()?.Trim();
 
-            Console.Write("비밀번호: ");
+            if (IsCancelInput(userId))
+            {
+                return false;
+            }
+
+            Console.Write("비밀번호 (0: 이전 메뉴): ");
             string? password = Console.ReadLine();
+
+            if (IsCancelInput(password))
+            {
+                return false;
+            }
 
             if (string.IsNullOrWhiteSpace(userId) ||
                 string.IsNullOrWhiteSpace(password))
@@ -105,8 +115,17 @@ namespace ChatClient
 
             while (true)
             {
-                Console.Write("닉네임: ");
+                Console.Write("닉네임 (0: 이전 메뉴): ");
                 string? nickname = Console.ReadLine()?.Trim();
+
+                if (IsCancelInput(nickname))
+                {
+                    await SendAsync(new ChatMessage
+                    {
+                        Type = MessageType.CancelLogin
+                    });
+                    return false;
+                }
 
                 if (string.IsNullOrWhiteSpace(nickname))
                 {
@@ -133,11 +152,21 @@ namespace ChatClient
 
         private async Task RegisterAsync()
         {
-            Console.Write("아이디: ");
+            Console.Write("아이디 (0: 이전 메뉴): ");
             string? userId = Console.ReadLine()?.Trim();
 
-            Console.Write("비밀번호: ");
+            if (IsCancelInput(userId))
+            {
+                return;
+            }
+
+            Console.Write("비밀번호 (0: 이전 메뉴): ");
             string? password = Console.ReadLine();
+
+            if (IsCancelInput(password))
+            {
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(userId) ||
                 string.IsNullOrWhiteSpace(password))
@@ -160,6 +189,9 @@ namespace ChatClient
             ChatMessage result = await ReceiveAsync();
             Console.WriteLine(result.Content);
         }
+
+        private static bool IsCancelInput(string? input) =>
+            input?.Trim() == "0";
 
         private async Task RunConnectedAsync()
         {

@@ -13,6 +13,7 @@ public enum MessageType
     LoginResult,
     SetNickname,
     NicknameResult,
+    CancelLogin,
     Leave,
     CreateRoom,
     JoinRoom,

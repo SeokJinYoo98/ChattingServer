@@ -111,7 +111,8 @@ public class ChatServer
         if (!session.IsAuthenticated &&
             message.Type != MessageType.Register &&
             message.Type != MessageType.Login &&
-            message.Type != MessageType.SetNickname)
+            message.Type != MessageType.SetNickname &&
+            message.Type != MessageType.CancelLogin)
         {
             await SendErrorAsync(
                 session,
@@ -136,6 +137,9 @@ public class ChatServer
                 break;
             case MessageType.SetNickname:
                 await HandleSetNicknameAsync(session, message);
+                break;
+            case MessageType.CancelLogin:
+                await HandleCancelLoginAsync(session);
                 break;
             case MessageType.Leave:
                 await HandleLeaveAsync(message);
@@ -344,6 +348,21 @@ public class ChatServer
         });
 
         session.SetNickname(nickname);
+    }
+
+    private async Task HandleCancelLoginAsync(
+        ClientSession session)
+    {
+        if (session.IsAuthenticated)
+        {
+            await SendErrorAsync(
+                session,
+                "서버 접속 후에는 로그인을 취소할 수 없습니다."
+            );
+            return;
+        }
+
+        session.CancelLogin();
     }
 
     private static Task SendErrorAsync(

@@ -61,6 +61,12 @@ public sealed class ClientSession : IDisposable
         Nickname = nickname;
     }
 
+    public void CancelLogin()
+    {
+        UserId = null;
+        Nickname = null;
+    }
+
     public void Dispose()
     {
         Stream.Dispose();
