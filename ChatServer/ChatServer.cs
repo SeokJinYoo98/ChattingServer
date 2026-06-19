@@ -108,16 +108,34 @@ public class ChatServer
         ClientSession session,
         ChatMessage message)
     {
+        if (!session.IsAuthenticated &&
+            message.Type != MessageType.Register &&
+            message.Type != MessageType.Login &&
+            message.Type != MessageType.SetNickname)
+        {
+            await SendErrorAsync(
+                session,
+                "로그인과 닉네임 설정을 먼저 완료하세요."
+            );
+            return;
+        }
+
         switch (message.Type)
         {
             case MessageType.Chat:
-                await HandleChatAsync(message);
+                await HandleChatAsync(session, message);
                 break;
             case MessageType.System:
                 await HandleSystemAsync(message);
                 break;
             case MessageType.Register:
                 await HandleRegisterAsync(session, message);
+                break;
+            case MessageType.Login:
+                await HandleLoginAsync(session, message);
+                break;
+            case MessageType.SetNickname:
+                await HandleSetNicknameAsync(session, message);
                 break;
             case MessageType.Leave:
                 await HandleLeaveAsync(message);
@@ -148,8 +166,13 @@ public class ChatServer
         }
     }
 
-    private Task HandleChatAsync(ChatMessage message) =>
-        BroadcastAsync(message);
+    private Task HandleChatAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        message.Sender = session.Nickname ?? string.Empty;
+        return BroadcastAsync(message);
+    }
 
     private Task HandleSystemAsync(ChatMessage message) =>
         BroadcastAsync(message);
@@ -158,6 +181,15 @@ public class ChatServer
         ClientSession session,
         ChatMessage message)
     {
+        if (session.IsLoginVerified)
+        {
+            await SendErrorAsync(
+                session,
+                "로그인 후에는 회원가입할 수 없습니다."
+            );
+            return;
+        }
+
         UserAccount? account = message.Account;
 
         if (account == null ||
@@ -209,6 +241,121 @@ public class ChatServer
             Content = content
         });
 
+    private async Task HandleLoginAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        if (session.IsLoginVerified)
+        {
+            await SendErrorAsync(
+                session,
+                "이미 로그인되었습니다."
+            );
+            return;
+        }
+
+        UserAccount? account = message.Account;
+
+        if (account == null ||
+            string.IsNullOrWhiteSpace(account.UserId) ||
+            string.IsNullOrWhiteSpace(account.Password))
+        {
+            await SendErrorAsync(
+                session,
+                "아이디와 비밀번호를 모두 입력하세요."
+            );
+            return;
+        }
+
+        account.UserId = account.UserId.Trim();
+
+        try
+        {
+            bool authenticated =
+                await _accountStore.AuthenticateAsync(account);
+
+            if (!authenticated)
+            {
+                await SendErrorAsync(
+                    session,
+                    "아이디 또는 비밀번호가 일치하지 않습니다."
+                );
+                return;
+            }
+
+            session.VerifyLogin(account.UserId);
+
+            await session.SendAsync(new ChatMessage
+            {
+                Type = MessageType.LoginResult,
+                Sender = "Server",
+                Content = "로그인되었습니다. 닉네임을 설정하세요."
+            });
+        }
+        catch (IOException exception)
+        {
+            Console.WriteLine($"[Login Error] {exception.Message}");
+
+            await SendErrorAsync(
+                session,
+                "회원 정보를 확인하지 못했습니다."
+            );
+        }
+    }
+
+    private async Task HandleSetNicknameAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        if (!session.IsLoginVerified)
+        {
+            await SendErrorAsync(
+                session,
+                "로그인을 먼저 완료하세요."
+            );
+            return;
+        }
+
+        if (session.IsAuthenticated)
+        {
+            await SendErrorAsync(
+                session,
+                "닉네임이 이미 설정되었습니다."
+            );
+            return;
+        }
+
+        string nickname = message.Content.Trim();
+
+        if (string.IsNullOrWhiteSpace(nickname))
+        {
+            await SendErrorAsync(
+                session,
+                "닉네임을 입력하세요."
+            );
+            return;
+        }
+
+        await session.SendAsync(new ChatMessage
+        {
+            Type = MessageType.NicknameResult,
+            Sender = "Server",
+            Content = $"{nickname} 닉네임으로 서버에 접속했습니다."
+        });
+
+        session.SetNickname(nickname);
+    }
+
+    private static Task SendErrorAsync(
+        ClientSession session,
+        string content) =>
+        session.SendAsync(new ChatMessage
+        {
+            Type = MessageType.Error,
+            Sender = "Server",
+            Content = content
+        });
+
     private Task HandleLeaveAsync(ChatMessage message) =>
         BroadcastAsync(message);
 
@@ -233,7 +380,9 @@ public class ChatServer
         List<ClientSession> clients;
         lock (_clientsLock)
         {
-            clients = _clients.ToList();
+            clients = _clients
+                .Where(session => session.IsAuthenticated)
+                .ToList();
         }
         foreach(ClientSession session in clients)
         {

@@ -6,6 +6,10 @@ public sealed class ClientSession : IDisposable
     public TcpClient        Client { get; }
     public NetworkStream    Stream { get; }
     public string           ClientInfo { get; }
+    public string?          UserId { get; private set; }
+    public string?          Nickname { get; private set; }
+    public bool             IsLoginVerified => UserId != null;
+    public bool             IsAuthenticated => Nickname != null;
 
     private readonly SemaphoreSlim _sendLock = new(1, 1);
 
@@ -46,6 +50,17 @@ public sealed class ClientSession : IDisposable
 
         return MessageProtocol.DecodeBody(body);
     }
+
+    public void VerifyLogin(string userId)
+    {
+        UserId = userId;
+    }
+
+    public void SetNickname(string nickname)
+    {
+        Nickname = nickname;
+    }
+
     public void Dispose()
     {
         Stream.Dispose();

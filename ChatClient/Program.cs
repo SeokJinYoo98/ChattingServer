@@ -12,12 +12,6 @@ public static class Program
 
         await client.ConnectAsync(Host, Port);
 
-        Task receiveTask = client.ReceiveMessageAsync();
-
         await client.RunAsync();
-
-        client.Disconnect();
-
-        await receiveTask;
     }
 }

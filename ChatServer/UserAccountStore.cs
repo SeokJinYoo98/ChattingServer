@@ -72,6 +72,61 @@ public sealed class UserAccountStore
         }
     }
 
+    public async Task<bool> AuthenticateAsync(UserAccount account)
+    {
+        await _fileLock.WaitAsync();
+
+        try
+        {
+            List<StoredUserAccount> accounts = await LoadAsync();
+            StoredUserAccount? savedAccount = accounts.FirstOrDefault(
+                item => string.Equals(
+                    item.UserId,
+                    account.UserId,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            );
+
+            if (savedAccount == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                byte[] salt = Convert.FromBase64String(
+                    savedAccount.PasswordSalt
+                );
+                byte[] savedPasswordHash = Convert.FromBase64String(
+                    savedAccount.PasswordHash
+                );
+                byte[] passwordHash = Rfc2898DeriveBytes.Pbkdf2(
+                    account.Password,
+                    salt,
+                    Iterations,
+                    HashAlgorithmName.SHA256,
+                    HashSize
+                );
+
+                return CryptographicOperations.FixedTimeEquals(
+                    passwordHash,
+                    savedPasswordHash
+                );
+            }
+            catch (FormatException exception)
+            {
+                throw new InvalidDataException(
+                    "사용자 데이터 파일을 읽을 수 없습니다.",
+                    exception
+                );
+            }
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+    }
+
     private async Task<List<StoredUserAccount>> LoadAsync()
     {
         if (!File.Exists(_filePath))

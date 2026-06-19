@@ -12,6 +12,7 @@ namespace ChatClient
         private readonly TcpClient _tcpClient = new();
 
         private NetworkStream? _stream;
+        private string _nickname = string.Empty;
 
         public async Task  ConnectAsync(string host, int port)
         {
@@ -49,7 +50,11 @@ namespace ChatClient
                 {
                     case "1":
                     case "로그인":
-                        Console.WriteLine("로그인 기능은 아직 구현되지 않았습니다.");
+                        if (await LoginAsync())
+                        {
+                            await RunConnectedAsync();
+                            return;
+                        }
                         break;
                     case "2":
                     case "회원가입":
@@ -61,6 +66,67 @@ namespace ChatClient
                     default:
                         Console.WriteLine("1, 2, 3 또는 메뉴 이름을 입력하세요.");
                         break;
+                }
+            }
+        }
+
+        private async Task<bool> LoginAsync()
+        {
+            Console.Write("아이디: ");
+            string? userId = Console.ReadLine()?.Trim();
+
+            Console.Write("비밀번호: ");
+            string? password = Console.ReadLine();
+
+            if (string.IsNullOrWhiteSpace(userId) ||
+                string.IsNullOrWhiteSpace(password))
+            {
+                Console.WriteLine("아이디와 비밀번호를 모두 입력하세요.");
+                return false;
+            }
+
+            await SendAsync(new ChatMessage
+            {
+                Type = MessageType.Login,
+                Account = new UserAccount
+                {
+                    UserId = userId,
+                    Password = password
+                }
+            });
+
+            ChatMessage loginResult = await ReceiveAsync();
+            Console.WriteLine(loginResult.Content);
+
+            if (loginResult.Type != MessageType.LoginResult)
+            {
+                return false;
+            }
+
+            while (true)
+            {
+                Console.Write("닉네임: ");
+                string? nickname = Console.ReadLine()?.Trim();
+
+                if (string.IsNullOrWhiteSpace(nickname))
+                {
+                    Console.WriteLine("닉네임을 입력하세요.");
+                    continue;
+                }
+
+                await SendAsync(new ChatMessage
+                {
+                    Type = MessageType.SetNickname,
+                    Content = nickname
+                });
+
+                ChatMessage nicknameResult = await ReceiveAsync();
+                Console.WriteLine(nicknameResult.Content);
+
+                if (nicknameResult.Type == MessageType.NicknameResult)
+                {
+                    _nickname = nickname;
+                    return true;
                 }
             }
         }
@@ -91,7 +157,40 @@ namespace ChatClient
             };
 
             await SendAsync(message);
-            Console.WriteLine("회원가입 요청을 전송했습니다.");
+            ChatMessage result = await ReceiveAsync();
+            Console.WriteLine(result.Content);
+        }
+
+        private async Task RunConnectedAsync()
+        {
+            Console.WriteLine("메시지를 입력하세요. 종료하려면 '종료'를 입력하세요.");
+
+            Task receiveTask = ReceiveMessageAsync();
+
+            while (true)
+            {
+                string? content = Console.ReadLine();
+
+                if (content?.Trim() == "종료")
+                {
+                    break;
+                }
+
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    continue;
+                }
+
+                await SendAsync(new ChatMessage
+                {
+                    Type = MessageType.Chat,
+                    Sender = _nickname,
+                    Content = content
+                });
+            }
+
+            Disconnect();
+            await receiveTask;
         }
         public async Task  ReceiveMessageAsync()
         {
@@ -123,6 +222,10 @@ namespace ChatClient
                 Console.WriteLine(
                     "Disconnected from Server"
                 );
+            }
+            catch (ObjectDisposedException)
+            {
+                // 클라이언트에서 정상적으로 연결을 종료한 경우
             }
         }
 
