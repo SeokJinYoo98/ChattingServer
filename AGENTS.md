@@ -1,24 +1,77 @@
 # AGENTS.md
 
-## Project
+## 작업 원칙
 
-This repository contains a simple C# TCP chat server built with `TcpListener` and `TcpClient`.
+* 사용자의 요청 범위 안에서만 작업한다.
+* 불필요한 리팩토링, 파일 구조 변경, 기능 추가는 하지 않는다.
+* 기존 코드 스타일과 네이밍을 최대한 유지한다.
+* 사용자가 직접 요청하기 전까지 `git push`는 절대 실행하지 않는다.
 
-## Guidelines
+## 검증 규칙
 
-- Keep the implementation small and easy to read.
-- Prefer standard .NET APIs before adding external packages.
-- Use asynchronous socket handling for client connections and message reads.
-- Keep server and client responsibilities separated when adding a client app.
-- Handle client disconnects and socket exceptions without crashing the server.
-- Avoid committing build output, IDE metadata, logs, or local environment files.
+코드 수정 후 반드시 아래 순서로 확인한다.
 
-## Commands
+1. `git diff`
+2. `git status`
+3. 가능한 경우 `dotnet build`
 
-- Build with `dotnet build` once a project file exists.
-- Run tests with `dotnet test` if test projects are added.
+빌드 또는 테스트가 실패하면 커밋하지 않고 실패 원인을 보고한다.
 
-## Notes
+## Git 커밋 규칙
 
-- This is a learning project, not a production chat system.
-- Do not add authentication, encryption, persistence, or protocol complexity unless requested.
+코드 수정이 완료되고 검증이 통과하면 Git 커밋까지 진행한다.
+
+* 관련 변경 파일만 `git add` 한다.
+* `git commit`까지만 수행한다.
+* `git push`는 수행하지 않는다.
+* 사용자가 “커밋하지 마”라고 요청한 경우 커밋하지 않는다.
+* 코드 수정이 없는 분석, 설계, 질문 답변 작업은 커밋하지 않는다.
+
+## 커밋 메시지 규칙
+
+커밋 제목은 Conventional Commit 형식을 따른다.
+
+형식:
+
+`type: 변경 내용 요약`
+
+사용 가능한 타입:
+
+* `feat`: 기능 추가
+* `fix`: 버그 수정
+* `refactor`: 동작 변경 없는 구조 개선
+* `chore`: 설정, 문서 외 기타 정리
+* `docs`: 문서 수정
+* `test`: 테스트 추가 또는 수정
+* `style`: 포맷팅, 공백, 네이밍 정리
+* `build`: 빌드 설정, 프로젝트 파일, 패키지 변경
+
+타입 선택 기준:
+
+* 기능 추가 + 구조 개선 → `feat`
+* 버그 수정 + 구조 개선 → `fix`
+* 문서만 수정 → `docs`
+* AGENTS.md만 수정 → `chore`
+
+## 작업 완료 보고 규칙
+
+코드 수정 내용에 대한 장문 보고는 작성하지 않는다.
+변경 내용 설명은 Git 커밋 메시지로 대체한다.
+
+최종 응답은 아래 형식만 사용한다.
+
+검증:
+
+* 실행한 명령어와 결과
+
+깃 커밋:
+
+* 완료 / 미완료
+
+커밋 제목:
+
+* 실제 커밋 제목
+
+커밋 내용:
+
+* 실제 커밋 본문
