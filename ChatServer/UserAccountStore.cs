@@ -127,6 +127,23 @@ public sealed class UserAccountStore
         }
     }
 
+    public async Task ClearAsync()
+    {
+        await _fileLock.WaitAsync();
+
+        try
+        {
+            if (File.Exists(_filePath))
+            {
+                File.Delete(_filePath);
+            }
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
+    }
+
     private async Task<List<StoredUserAccount>> LoadAsync()
     {
         if (!File.Exists(_filePath))
