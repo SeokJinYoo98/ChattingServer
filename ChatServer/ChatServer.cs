@@ -73,7 +73,7 @@ public class ChatServer
                     $"Content=\"{message.Content}\""
                 );
 
-                await BroadcastAsync(message);
+                await DispatchMessageAsync(session, message);
             }
         }
         catch (IOException)
@@ -98,6 +98,77 @@ public class ChatServer
             );
         }
     }
+
+    private async Task DispatchMessageAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        switch (message.Type)
+        {
+            case MessageType.Chat:
+                await HandleChatAsync(message);
+                break;
+            case MessageType.System:
+                await HandleSystemAsync(message);
+                break;
+            case MessageType.Join:
+                await HandleJoinAsync(message);
+                break;
+            case MessageType.Leave:
+                await HandleLeaveAsync(message);
+                break;
+            case MessageType.CreateRoom:
+                await HandleCreateRoomAsync(message);
+                break;
+            case MessageType.JoinRoom:
+                await HandleJoinRoomAsync(message);
+                break;
+            case MessageType.GameReady:
+                await HandleGameReadyAsync(message);
+                break;
+            case MessageType.MovePiece:
+                await HandleMovePieceAsync(message);
+                break;
+            case MessageType.Error:
+                await HandleErrorAsync(message);
+                break;
+            default:
+                await session.SendAsync(new ChatMessage
+                {
+                    Type = MessageType.Error,
+                    Sender = "Server",
+                    Content = $"지원하지 않는 메시지 타입입니다: {message.Type}"
+                });
+                break;
+        }
+    }
+
+    private Task HandleChatAsync(ChatMessage message) =>
+        BroadcastAsync(message);
+
+    private Task HandleSystemAsync(ChatMessage message) =>
+        BroadcastAsync(message);
+
+    private Task HandleJoinAsync(ChatMessage message) =>
+        BroadcastAsync(message);
+
+    private Task HandleLeaveAsync(ChatMessage message) =>
+        BroadcastAsync(message);
+
+    private Task HandleCreateRoomAsync(ChatMessage message) =>
+        BroadcastAsync(message);
+
+    private Task HandleJoinRoomAsync(ChatMessage message) =>
+        BroadcastAsync(message);
+
+    private Task HandleGameReadyAsync(ChatMessage message) =>
+        BroadcastAsync(message);
+
+    private Task HandleMovePieceAsync(ChatMessage message) =>
+        BroadcastAsync(message);
+
+    private Task HandleErrorAsync(ChatMessage message) =>
+        BroadcastAsync(message);
 
     private async Task BroadcastAsync(
         ChatMessage message)

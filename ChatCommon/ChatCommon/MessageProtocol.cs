@@ -5,7 +5,17 @@ using System.Text.Json;
 namespace ChatCommon;
 
 public enum MessageType
-{ Chat, System };
+{
+    Chat,
+    System,
+    Join,
+    Leave,
+    CreateRoom,
+    JoinRoom,
+    GameReady,
+    MovePiece,
+    Error
+};
 
 public sealed class ChatMessage
 {
