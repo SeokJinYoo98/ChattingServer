@@ -12,6 +12,7 @@ public class ChatServer
     private readonly UserAccountStore    _accountStore;
 
     private bool _isRunning;
+    private bool _isClearingPlayers;
 
     public ChatServer(int port)
     {
@@ -42,10 +43,24 @@ public class ChatServer
                 ClientSession session =
                     new ClientSession(client);
 
+                bool accepted;
+
                 lock (_clientsLock)
                 {
-                    _clients.Add(session);
+                    accepted = !_isClearingPlayers;
+
+                    if (accepted)
+                    {
+                        _clients.Add(session);
+                    }
                 }
+
+                if (!accepted)
+                {
+                    session.Dispose();
+                    continue;
+                }
+
                 Console.WriteLine(
                     $"[Connect] {session.ClientInfo}"
                 );
@@ -58,6 +73,85 @@ public class ChatServer
         catch (SocketException)
         {
             // Stop() 호출로 Accept 대기가 풀린 경우
+        }
+    }
+
+    public void PrintPlayerList()
+    {
+        List<(string UserId, string Nickname)> players;
+
+        lock (_clientsLock)
+        {
+            players = _clients
+                .Where(session => session.IsAuthenticated)
+                .Select(session => (
+                    session.UserId ?? string.Empty,
+                    session.Nickname ?? string.Empty
+                ))
+                .ToList();
+        }
+
+        Console.WriteLine($"[PlayerList] 접속 인원: {players.Count}");
+
+        foreach ((string userId, string nickname) in players)
+        {
+            Console.WriteLine(
+                $"아이디: {userId}, 닉네임: {nickname}"
+            );
+        }
+    }
+
+    public async Task ClearPlayersAsync()
+    {
+        List<ClientSession> clients;
+
+        lock (_clientsLock)
+        {
+            _isClearingPlayers = true;
+            clients = _clients.ToList();
+            _clients.Clear();
+        }
+
+        try
+        {
+            foreach (ClientSession session in clients)
+            {
+                try
+                {
+                    await session.SendAsync(new ChatMessage
+                    {
+                        Type = MessageType.System,
+                        Sender = "Server",
+                        Content = "서버에 의해 접속이 종료되었습니다."
+                    });
+                }
+                catch (IOException)
+                {
+                    // 이미 연결이 종료된 세션은 메시지를 전송할 수 없다.
+                }
+                catch (ObjectDisposedException)
+                {
+                    // 이미 정리된 세션은 메시지를 전송할 수 없다.
+                }
+                finally
+                {
+                    session.Dispose();
+                }
+            }
+
+            await _accountStore.ClearAsync();
+
+            Console.WriteLine(
+                $"[PlayerClear] 계정 정보를 삭제하고 " +
+                $"클라이언트 {clients.Count}명의 연결을 종료했습니다."
+            );
+        }
+        finally
+        {
+            lock (_clientsLock)
+            {
+                _isClearingPlayers = false;
+            }
         }
     }
 
