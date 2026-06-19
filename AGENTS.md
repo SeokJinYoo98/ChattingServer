@@ -1,5 +1,24 @@
 # AGENTS.md
 
+## 브랜치 작업 규칙
+
+코드 수정 작업 전 현재 브랜치를 확인한다.
+
+* `git branch --show-current`
+* `git status`
+
+`main` 브랜치에서는 직접 코드 수정이나 커밋을 하지 않는다.
+
+현재 브랜치가 `main`이면 작업을 진행하지 말고, 사용자에게 `codex/work` 브랜치로 전환이 필요한지 확인한다.
+
+기본 작업 브랜치는 `codex/work`이다.
+
+주의사항:
+
+* Codex는 사용자 허락 없이 브랜치를 생성하거나 변경하지 않는다.
+* Codex는 사용자 허락 없이 `git switch`, `git checkout`, `git branch -D`, `git reset`, `git rebase`를 실행하지 않는다.
+* `git push`는 사용자가 직접 요청하기 전까지 절대 실행하지 않는다.
+
 ## 작업 원칙
 
 * 사용자의 요청 범위 안에서만 작업한다.
