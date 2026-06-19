@@ -26,7 +26,7 @@ namespace ChatClient
                 "Connected to Server"
             );
         }
-        public async Task  RunAsync()
+        public async Task RunAsync()
         {
             if (_stream == null)
             {
@@ -35,25 +35,63 @@ namespace ChatClient
                 );
             }
 
-            while(true)
+            while (true)
             {
-                string? input = Console.ReadLine();
+                Console.WriteLine();
+                Console.WriteLine("1. 로그인");
+                Console.WriteLine("2. 회원가입");
+                Console.WriteLine("3. 종료");
+                Console.Write("선택: ");
 
-                if (input == "/exit")
-                    break;
+                string? input = Console.ReadLine()?.Trim();
 
-                if (string.IsNullOrWhiteSpace(input))
-                    continue;
-
-                var message = new ChatMessage
+                switch (input)
                 {
-                    Type    = MessageType.Chat,
-                    Sender  = "Client",
-                    Content = input
-                };
-
-                await SendAsync(message);
+                    case "1":
+                    case "로그인":
+                        Console.WriteLine("로그인 기능은 아직 구현되지 않았습니다.");
+                        break;
+                    case "2":
+                    case "회원가입":
+                        await RegisterAsync();
+                        break;
+                    case "3":
+                    case "종료":
+                        return;
+                    default:
+                        Console.WriteLine("1, 2, 3 또는 메뉴 이름을 입력하세요.");
+                        break;
+                }
             }
+        }
+
+        private async Task RegisterAsync()
+        {
+            Console.Write("아이디: ");
+            string? userId = Console.ReadLine()?.Trim();
+
+            Console.Write("비밀번호: ");
+            string? password = Console.ReadLine();
+
+            if (string.IsNullOrWhiteSpace(userId) ||
+                string.IsNullOrWhiteSpace(password))
+            {
+                Console.WriteLine("아이디와 비밀번호를 모두 입력하세요.");
+                return;
+            }
+
+            var message = new ChatMessage
+            {
+                Type = MessageType.Register,
+                Account = new UserAccount
+                {
+                    UserId = userId,
+                    Password = password
+                }
+            };
+
+            await SendAsync(message);
+            Console.WriteLine("회원가입 요청을 전송했습니다.");
         }
         public async Task  ReceiveMessageAsync()
         {

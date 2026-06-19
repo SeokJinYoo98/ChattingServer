@@ -111,9 +111,6 @@ public class ChatServer
             case MessageType.System:
                 await HandleSystemAsync(message);
                 break;
-            case MessageType.Join:
-                await HandleJoinAsync(message);
-                break;
             case MessageType.Leave:
                 await HandleLeaveAsync(message);
                 break;
@@ -147,9 +144,6 @@ public class ChatServer
         BroadcastAsync(message);
 
     private Task HandleSystemAsync(ChatMessage message) =>
-        BroadcastAsync(message);
-
-    private Task HandleJoinAsync(ChatMessage message) =>
         BroadcastAsync(message);
 
     private Task HandleLeaveAsync(ChatMessage message) =>
