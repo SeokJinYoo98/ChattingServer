@@ -91,12 +91,24 @@ public class ChatServer
         }
         finally
         {
+            string? nickname = session.Nickname;
+
             lock (_clientsLock)
             {
                 _clients.Remove(session);
             }
 
             session.Dispose();
+
+            if (!string.IsNullOrWhiteSpace(nickname))
+            {
+                await BroadcastAsync(new ChatMessage
+                {
+                    Type = MessageType.System,
+                    Sender = "Server",
+                    Content = $"{nickname}님이 서버를 떠나셨습니다."
+                });
+            }
 
             Console.WriteLine(
                 $"[Disconnect] {session.ClientInfo}"
