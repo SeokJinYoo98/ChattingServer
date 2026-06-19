@@ -9,6 +9,7 @@ public class ChatServer
     private readonly List<ClientSession> _clients       = new();
     private readonly Lock                _clientsLock   = new();
     private readonly TcpListener         _listener;
+    private readonly UserAccountStore    _accountStore;
 
     private bool _isRunning;
 
@@ -17,6 +18,10 @@ public class ChatServer
         _listener = new TcpListener(
             IPAddress.Any,
             port
+        );
+
+        _accountStore = new UserAccountStore(
+            Path.Combine(Directory.GetCurrentDirectory(), "UserData")
         );
     }
 
@@ -111,6 +116,9 @@ public class ChatServer
             case MessageType.System:
                 await HandleSystemAsync(message);
                 break;
+            case MessageType.Register:
+                await HandleRegisterAsync(session, message);
+                break;
             case MessageType.Leave:
                 await HandleLeaveAsync(message);
                 break;
@@ -145,6 +153,61 @@ public class ChatServer
 
     private Task HandleSystemAsync(ChatMessage message) =>
         BroadcastAsync(message);
+
+    private async Task HandleRegisterAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        UserAccount? account = message.Account;
+
+        if (account == null ||
+            string.IsNullOrWhiteSpace(account.UserId) ||
+            string.IsNullOrWhiteSpace(account.Password))
+        {
+            await SendRegisterResultAsync(
+                session,
+                false,
+                "아이디와 비밀번호를 모두 입력하세요."
+            );
+            return;
+        }
+
+        account.UserId = account.UserId.Trim();
+
+        try
+        {
+            bool registered = await _accountStore.RegisterAsync(account);
+
+            await SendRegisterResultAsync(
+                session,
+                registered,
+                registered
+                    ? "회원가입이 완료되었습니다."
+                    : "이미 사용 중인 아이디입니다."
+            );
+        }
+        catch (IOException exception)
+        {
+            Console.WriteLine($"[Register Error] {exception.Message}");
+
+            await SendRegisterResultAsync(
+                session,
+                false,
+                "회원가입 정보를 저장하지 못했습니다."
+            );
+        }
+    }
+
+    private static Task SendRegisterResultAsync(
+        ClientSession session,
+        bool succeeded,
+        string content) =>
+        session.SendAsync(new ChatMessage
+        {
+            Type = succeeded ? MessageType.System : MessageType.Error,
+            Sender = "Server",
+            Content = content
+        });
 
     private Task HandleLeaveAsync(ChatMessage message) =>
         BroadcastAsync(message);
