@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
-using ChatCommon;
+using YuJanggiCommon;
 
 namespace MyServer;
 

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.37216.2
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatServer", "ChatServer.csproj", "{F0BFAC5B-F718-FB5A-0563-92BD49061FA7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiServer", "YuJanggiServer.csproj", "{F0BFAC5B-F718-FB5A-0563-92BD49061FA7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "솔루션 항목", "솔루션 항목", "{2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}"
 EndProject

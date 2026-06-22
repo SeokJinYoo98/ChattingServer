@@ -1,4 +1,4 @@
-namespace ChatCommon;
+namespace YuJanggiCommon;
 
 public sealed class UserAccount
 {

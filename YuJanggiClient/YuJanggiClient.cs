@@ -1,10 +1,10 @@
-﻿using ChatCommon;
+﻿using YuJanggiCommon;
 using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
 
-namespace ChatClient
+namespace YuJanggiClient
 {
 
     public sealed class EchoClient : IDisposable

@@ -2,25 +2,23 @@
 using System.Text;
 using System.Text.Json;
 
-namespace ChatCommon;
+namespace YuJanggiCommon;
 
 public enum MessageType
 {
-    Chat,
-    System,
-    Register,
-    Login,
-    LoginResult,
-    SetNickname,
-    NicknameResult,
-    CancelLogin,
-    Leave,
+    Join,
     CreateRoom,
     JoinRoom,
-    GameReady,
-    MovePiece,
+    Ready,
+
+    GameStart,
+    MoveRequest,
+    MoveResult,
+    TurnChanged,
+    GameEnd,
+
     Error
-};
+}
 
 public sealed class ChatMessage
 {

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\ChatCommon\ChatCommon\ChatCommon.csproj" />
+    <ProjectReference Include="..\YuJanggiCommon\YuJanggiCommon\YuJanggiCommon.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

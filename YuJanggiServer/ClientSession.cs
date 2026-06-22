@@ -1,5 +1,5 @@
 ﻿using System.Net.Sockets;
-using ChatCommon;
+using YuJanggiCommon;
 namespace MyServer.Client;
 public sealed class ClientSession : IDisposable
 {

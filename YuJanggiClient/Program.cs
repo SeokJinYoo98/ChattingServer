@@ -1,5 +1,5 @@
 ﻿using System.Threading.Tasks;
-using ChatClient;
+using YuJanggiClient;
 
 public static class Program
 {

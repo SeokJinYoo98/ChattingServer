@@ -2,9 +2,9 @@
 using System.Net;
 using System.Net.Sockets;
 using MyServer.Client;
-using ChatCommon;
+using YuJanggiCommon;
 namespace MyServer;
-public class ChatServer
+public class YuJanggiServer
 {
     private readonly List<ClientSession> _clients       = new();
     private readonly Lock                _clientsLock   = new();
@@ -14,7 +14,7 @@ public class ChatServer
     private bool _isRunning;
     private bool _isClearingPlayers;
 
-    public ChatServer(int port)
+    public YuJanggiServer(int port)
     {
         _listener = new TcpListener(
             IPAddress.Any,

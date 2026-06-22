@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatServer", "ChatServer\ChatServer.csproj", "{A88DD8F2-7974-4B4E-BF2E-4ACC7F2395EE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiServer", "YuJanggiServer\YuJanggiServer.csproj", "{A88DD8F2-7974-4B4E-BF2E-4ACC7F2395EE}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ChatCommon", "ChatCommon", "{9CB09BA1-D270-CC4D-44FB-26E31924BF10}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "YuJanggiCommon", "YuJanggiCommon", "{9CB09BA1-D270-CC4D-44FB-26E31924BF10}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatCommon", "ChatCommon\ChatCommon\ChatCommon.csproj", "{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiCommon", "YuJanggiCommon\YuJanggiCommon\YuJanggiCommon.csproj", "{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatClient", "ChatClient\ChatClient.csproj", "{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiClient", "YuJanggiClient\YuJanggiClient.csproj", "{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
