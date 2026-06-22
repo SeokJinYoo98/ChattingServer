@@ -35,4 +35,7 @@ packages/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Unity metadata
+*.meta
 RunChatTest.bat

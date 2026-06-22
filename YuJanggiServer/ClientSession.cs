@@ -1,23 +1,21 @@
-﻿using System.Net.Sockets;
+using System.Net.Sockets;
 using YuJanggiCommon;
+
 namespace MyServer.Client;
+
 public sealed class ClientSession : IDisposable
 {
-    public TcpClient        Client { get; }
-    public NetworkStream    Stream { get; }
-    public string           ClientInfo { get; }
-    public string?          UserId { get; private set; }
-    public string?          Nickname { get; private set; }
-    public bool             IsLoginVerified => UserId != null;
-    public bool             IsAuthenticated => Nickname != null;
+    public TcpClient Client { get; }
+    public NetworkStream Stream { get; }
+    public string ClientInfo { get; }
 
     private readonly SemaphoreSlim _sendLock = new(1, 1);
 
     public ClientSession(TcpClient client)
     {
-        Client     = client;
-        Stream     = client.GetStream();
-        ClientInfo = client.Client.RemoteEndPoint?.ToString() 
+        Client = client;
+        Stream = client.GetStream();
+        ClientInfo = client.Client.RemoteEndPoint?.ToString()
             ?? "Unknown";
     }
 
@@ -36,6 +34,7 @@ public sealed class ClientSession : IDisposable
             _sendLock.Release();
         }
     }
+
     public async Task<ChatMessage> ReceiveAsync()
     {
         byte[] header = new byte[MessageProtocol.HeaderSize];
@@ -43,28 +42,11 @@ public sealed class ClientSession : IDisposable
         await Stream.ReadExactlyAsync(header);
 
         int bodyLength = MessageProtocol.DecodeBodyLength(header);
-
         byte[] body = new byte[bodyLength];
 
         await Stream.ReadExactlyAsync(body);
 
         return MessageProtocol.DecodeBody(body);
-    }
-
-    public void VerifyLogin(string userId)
-    {
-        UserId = userId;
-    }
-
-    public void SetNickname(string nickname)
-    {
-        Nickname = nickname;
-    }
-
-    public void CancelLogin()
-    {
-        UserId = null;
-        Nickname = null;
     }
 
     public void Dispose()
@@ -74,4 +56,3 @@ public sealed class ClientSession : IDisposable
         _sendLock.Dispose();
     }
 }
-

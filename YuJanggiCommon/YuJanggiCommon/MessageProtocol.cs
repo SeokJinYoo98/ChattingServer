@@ -23,9 +23,7 @@ public enum MessageType
 public sealed class ChatMessage
 {
     public MessageType Type { get; set; }
-    public string Sender { get; set; }    = string.Empty;
-    public string Content { get; set; }   = string.Empty;
-    public UserAccount? Account { get; set; }
+    public string Content { get; set; } = string.Empty;
 }
 public static class MessageProtocol
 {

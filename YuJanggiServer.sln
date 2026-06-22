@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiCommon", "YuJanggiC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiClient", "YuJanggiClient\YuJanggiClient.csproj", "{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggi.Core", "YuJanggi\YuJanggi.Core.csproj", "{B4DCE41A-07E7-45B1-8B25-40777F350A9D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,18 @@ Global
 		{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}.Release|x64.Build.0 = Release|Any CPU
 		{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}.Release|x86.ActiveCfg = Release|Any CPU
 		{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}.Release|x86.Build.0 = Release|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Debug|x64.Build.0 = Debug|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Debug|x86.Build.0 = Debug|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Release|x64.ActiveCfg = Release|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Release|x64.Build.0 = Release|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Release|x86.ActiveCfg = Release|Any CPU
+		{B4DCE41A-07E7-45B1-8B25-40777F350A9D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,17 +1,7 @@
-﻿using System.Threading.Tasks;
-using YuJanggiClient;
-
 public static class Program
 {
-    private const string Host = "127.0.0.1";
-    private const int Port = 7777;
-
-    public static async Task Main()
+    public static void Main()
     {
-        using EchoClient client = new();
-
-        await client.ConnectAsync(Host, Port);
-
-        await client.RunAsync();
+        Console.WriteLine("YuJanggi Client");
     }
 }

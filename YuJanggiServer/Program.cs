@@ -5,9 +5,9 @@ public static class Program
     {
         YuJanggiServer server = new YuJanggiServer(7777);
 
-        Console.WriteLine("Chat Server Start");
+        Console.WriteLine("YuJanggi Server Start");
         Console.WriteLine("Port: 7777");
-        Console.WriteLine("Commands: playerList, playerClear");
+        Console.WriteLine("Commands: clientList, clientClear");
 
         Task serverTask = server.StartAsync();
 
@@ -22,28 +22,18 @@ public static class Program
             }
 
             if (command.Equals(
-                "playerList",
+                "clientList",
                 StringComparison.OrdinalIgnoreCase))
             {
-                server.PrintPlayerList();
+                server.PrintClientList();
                 continue;
             }
 
             if (command.Equals(
-                "playerClear",
+                "clientClear",
                 StringComparison.OrdinalIgnoreCase))
             {
-                try
-                {
-                    await server.ClearPlayersAsync();
-                }
-                catch (Exception exception)
-                    when (exception is IOException or UnauthorizedAccessException)
-                {
-                    Console.WriteLine(
-                        $"[PlayerClear Error] {exception.Message}"
-                    );
-                }
+                server.ClearClients();
                 continue;
             }
 

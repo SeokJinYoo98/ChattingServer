@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\YuJanggi\YuJanggi.Core.csproj" />
     <ProjectReference Include="..\YuJanggiCommon\YuJanggiCommon\YuJanggiCommon.csproj" />
   </ItemGroup>
 
