@@ -1,4 +1,4 @@
-# YuJanggiServer
+# ChattingServer
 
 C# `TcpListener`와 `TcpClient`를 사용해서 구현하는 간단한 콘솔 기반 채팅 서버 프로젝트입니다.
 
