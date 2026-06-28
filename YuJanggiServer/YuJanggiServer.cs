@@ -153,14 +153,14 @@ public class YuJanggiServer
                     ReferenceEquals(entry.Session, session)
                 );
 
-                if (session.GameId is Guid gameId &&
+                if (session.GameId is Guid activeGameId &&
                     _gameSessions.Remove(
-                        gameId,
+                        activeGameId,
                         out GameSession? gameSession
                     ))
                 {
                     opponent = gameSession.GetOpponent(session);
-                    endedGameId = gameId;
+                    endedGameId = activeGameId;
                     gameSession.ClearPlayers();
                 }
             }
@@ -168,7 +168,8 @@ public class YuJanggiServer
             session.Dispose();
             Console.WriteLine($"[Disconnect] {session.ClientInfo}");
 
-            if (opponent is not null && endedGameId is Guid gameId)
+            if (opponent is not null &&
+                endedGameId is Guid closedGameId)
             {
                 try
                 {
@@ -176,7 +177,7 @@ public class YuJanggiServer
                         MessageType.GameEnd,
                         null,
                         new GameEndEvent(
-                            gameId,
+                            closedGameId,
                             GameEndReason.OpponentLeft,
                             "상대 플레이어가 채팅방을 나갔습니다."
                         )
