@@ -345,6 +345,7 @@ public class YuJanggiServer
         ErrorCode? matchmakingError = null;
         MatchmakingEntry? first = null;
         MatchmakingEntry? second = null;
+        GameSession? createdGame = null;
         Guid gameId = default;
 
         lock (_clientsLock)
@@ -378,14 +379,12 @@ public class YuJanggiServer
                     gameId = Guid.NewGuid();
                     first.Session.SetMatch(gameId, PlayerSide.Cho);
                     second.Session.SetMatch(gameId, PlayerSide.Han);
-                    _gameSessions.Add(
+                    createdGame = new GameSession(
                         gameId,
-                        new GameSession(
-                            gameId,
-                            first.Session,
-                            second.Session
-                        )
+                        first.Session,
+                        second.Session
                     );
+                    _gameSessions.Add(gameId, createdGame);
                 }
             }
         }
@@ -432,6 +431,26 @@ public class YuJanggiServer
                     firstPlayer,
                     PlayerSide.Han
                 )
+            ))
+        );
+
+        if (createdGame is null)
+        {
+            throw new InvalidOperationException(
+                "매칭된 게임 세션이 생성되지 않았습니다."
+            );
+        }
+
+        await Task.WhenAll(
+            first.Session.SendAsync(ChatMessage.Create(
+                MessageType.GameStart,
+                null,
+                createdGame.CreateGameStart(PlayerSide.Cho)
+            )),
+            second.Session.SendAsync(ChatMessage.Create(
+                MessageType.GameStart,
+                null,
+                createdGame.CreateGameStart(PlayerSide.Han)
             ))
         );
     }

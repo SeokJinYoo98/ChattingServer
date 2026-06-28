@@ -44,12 +44,21 @@ public static class Program
                 return;
             }
 
+            GameStartEvent? gameStart =
+                await ReceiveGameStartAsync(stream);
+
+            if (gameStart is null)
+            {
+                return;
+            }
+
             Console.WriteLine();
             Console.WriteLine("=== 채팅방 입장 ===");
             Console.WriteLine($"게임 ID: {match.GameId}");
             Console.WriteLine(
                 $"상대: {match.Opponent.PlayerName} | 진영: {match.Side}"
             );
+            PrintBoard(gameStart);
             Console.WriteLine("메시지를 입력하세요. 종료: /quit");
 
             using CancellationTokenSource chatCancellation = new();
@@ -202,6 +211,100 @@ public static class Program
         }
     }
 
+    private static async Task<GameStartEvent?> ReceiveGameStartAsync(
+        NetworkStream stream)
+    {
+        ChatMessage response = await ReceiveAsync(stream);
+
+        if (response.Type == MessageType.Error)
+        {
+            PrintError(response);
+            return null;
+        }
+
+        if (response.Type != MessageType.GameStart)
+        {
+            throw new InvalidDataException(
+                $"GameStart 대신 {response.Type} 메시지를 받았습니다."
+            );
+        }
+
+        return response.GetPayload<GameStartEvent>();
+    }
+
+    private static void PrintBoard(GameStartEvent gameStart)
+    {
+        const int width = 9;
+        const int height = 10;
+        string[,] board = new string[height, width];
+
+        for (int z = 0; z < height; z++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                board[z, x] = "..";
+            }
+        }
+
+        foreach (BoardPieceState piece in gameStart.Pieces)
+        {
+            if (piece.X < 0 || width <= piece.X ||
+                piece.Z < 0 || height <= piece.Z)
+            {
+                throw new InvalidDataException(
+                    $"보드 범위를 벗어난 기물 좌표입니다: " +
+                    $"({piece.X}, {piece.Z})"
+                );
+            }
+
+            board[piece.Z, piece.X] = GetPieceToken(piece);
+        }
+
+        Console.WriteLine();
+        Console.WriteLine(
+            $"내 진영: {gameStart.Side} | 현재 턴: {gameStart.CurrentTurn}"
+        );
+        Console.WriteLine("    0  1  2  3  4  5  6  7  8");
+
+        for (int z = 0; z < height; z++)
+        {
+            Console.Write($"{z,2}  ");
+
+            for (int x = 0; x < width; x++)
+            {
+                Console.Write(board[z, x]);
+
+                if (x < width - 1)
+                {
+                    Console.Write(' ');
+                }
+            }
+
+            Console.WriteLine();
+        }
+
+        Console.WriteLine();
+    }
+
+    private static string GetPieceToken(BoardPieceState piece)
+    {
+        char side = piece.Side == PlayerSide.Cho ? 'C' : 'H';
+        char pieceType = piece.PieceType switch
+        {
+            GamePieceType.King => 'K',
+            GamePieceType.Chariot => 'R',
+            GamePieceType.Cannon => 'C',
+            GamePieceType.Horse => 'H',
+            GamePieceType.Elephant => 'E',
+            GamePieceType.Guard => 'G',
+            GamePieceType.Soldier => 'S',
+            _ => throw new InvalidDataException(
+                $"지원하지 않는 기물입니다: {piece.PieceType}"
+            )
+        };
+
+        return $"{side}{pieceType}";
+    }
     private static async Task SendChatAsync(
         NetworkStream stream,
         CancellationToken cancellationToken)
