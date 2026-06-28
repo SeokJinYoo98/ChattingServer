@@ -3,6 +3,7 @@ namespace YuJanggiCommon;
 public enum ErrorCode
 {
     InvalidRequest,
+    AlreadyJoined,
     UnsupportedMessageType,
     NotImplemented,
     PlayerNameRequired,

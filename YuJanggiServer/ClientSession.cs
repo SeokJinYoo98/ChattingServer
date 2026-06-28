@@ -8,6 +8,9 @@ public sealed class ClientSession : IDisposable
     public TcpClient Client { get; }
     public NetworkStream Stream { get; }
     public string ClientInfo { get; }
+    public Guid? PlayerId { get; private set; }
+    public string? PlayerName { get; private set; }
+    public bool IsJoined => PlayerId.HasValue;
 
     private readonly SemaphoreSlim _sendLock = new(1, 1);
 
@@ -17,6 +20,20 @@ public sealed class ClientSession : IDisposable
         Stream = client.GetStream();
         ClientInfo = client.Client.RemoteEndPoint?.ToString()
             ?? "Unknown";
+    }
+
+    public bool TryJoin(string playerName, out Guid playerId)
+    {
+        if (IsJoined)
+        {
+            playerId = default;
+            return false;
+        }
+
+        playerId = Guid.NewGuid();
+        PlayerId = playerId;
+        PlayerName = playerName;
+        return true;
     }
 
     public async Task SendAsync(ChatMessage message)

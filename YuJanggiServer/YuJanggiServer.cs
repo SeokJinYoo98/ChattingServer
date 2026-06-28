@@ -226,12 +226,21 @@ public class YuJanggiServer
             );
         }
 
-        return SendErrorAsync(
-            session,
+        if (!session.TryJoin(playerName, out Guid playerId))
+        {
+            return SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.AlreadyJoined,
+                "이미 참가한 세션입니다."
+            );
+        }
+
+        return session.SendAsync(ChatMessage.Create(
+            MessageType.Join,
             message.RequestId,
-            ErrorCode.NotImplemented,
-            "Join 처리는 아직 구현되지 않았습니다."
-        );
+            new JoinResponse(playerId, playerName)
+        ));
     }
 
     private static Task SendErrorAsync(
