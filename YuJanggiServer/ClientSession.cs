@@ -45,6 +45,12 @@ public sealed class ClientSession : IDisposable
         Side = side;
     }
 
+    public void ClearMatch()
+    {
+        GameId = null;
+        Side = null;
+    }
+
     public async Task SendAsync(ChatMessage message)
     {
         byte[] packet = MessageProtocol.Encode(message);

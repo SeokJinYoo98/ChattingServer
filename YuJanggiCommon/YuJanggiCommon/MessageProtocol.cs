@@ -12,6 +12,9 @@ public enum MessageType
     MatchmakingStatus,
     MatchFound,
 
+    GameChatSend,
+    GameChatReceived,
+
     GameStart,
     MoveRequest,
     MoveResult,

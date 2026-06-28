@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
 using MyServer.Client;
+using MyServer.Game;
 using YuJanggiCommon;
 
 namespace MyServer;
@@ -10,6 +11,7 @@ public class YuJanggiServer
 {
     private readonly List<ClientSession> _clients = new();
     private readonly List<MatchmakingEntry> _matchmakingQueue = new();
+    private readonly Dictionary<Guid, GameSession> _gameSessions = new();
     private readonly Lock _clientsLock = new();
     private readonly TcpListener _listener;
 
@@ -93,6 +95,7 @@ public class YuJanggiServer
             clients = _clients.ToList();
             _clients.Clear();
             _matchmakingQueue.Clear();
+            _gameSessions.Clear();
         }
 
         try
@@ -146,6 +149,15 @@ public class YuJanggiServer
                 _matchmakingQueue.RemoveAll(entry =>
                     ReferenceEquals(entry.Session, session)
                 );
+
+                if (session.GameId is Guid gameId &&
+                    _gameSessions.Remove(
+                        gameId,
+                        out GameSession? gameSession
+                    ))
+                {
+                    gameSession.ClearPlayers();
+                }
             }
 
             session.Dispose();
@@ -164,6 +176,8 @@ public class YuJanggiServer
                 HandleMatchmakingStartAsync(session, message),
             MessageType.MatchmakingCancel =>
                 HandleMatchmakingCancelAsync(session, message),
+            MessageType.GameChatSend =>
+                HandleGameChatAsync(session, message),
             MessageType.MoveRequest => SendErrorAsync(
                 session,
                 message.RequestId,
@@ -172,6 +186,7 @@ public class YuJanggiServer
             ),
             MessageType.MatchmakingStatus or
             MessageType.MatchFound or
+            MessageType.GameChatReceived or
             MessageType.GameStart or
             MessageType.MoveResult or
             MessageType.TurnChanged or
@@ -336,6 +351,14 @@ public class YuJanggiServer
                     gameId = Guid.NewGuid();
                     first.Session.SetMatch(gameId, PlayerSide.Cho);
                     second.Session.SetMatch(gameId, PlayerSide.Han);
+                    _gameSessions.Add(
+                        gameId,
+                        new GameSession(
+                            gameId,
+                            first.Session,
+                            second.Session
+                        )
+                    );
                 }
             }
         }
@@ -438,6 +461,119 @@ public class YuJanggiServer
         ));
     }
 
+    private async Task HandleGameChatAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        GameChatSendRequest request;
+
+        try
+        {
+            request = message.GetPayload<GameChatSendRequest>();
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException or JsonException)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.InvalidRequest,
+                "GameChatSend Payload 형식이 올바르지 않습니다."
+            );
+            return;
+        }
+
+        string chatMessage = request.Message?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(chatMessage))
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.ChatMessageRequired,
+                "채팅 메시지는 필수입니다."
+            );
+            return;
+        }
+
+        if (chatMessage.Length > GameChatRules.MaxMessageLength)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.ChatMessageTooLong,
+                $"채팅 메시지는 {GameChatRules.MaxMessageLength}자 이하여야 합니다."
+            );
+            return;
+        }
+
+        GameSession? gameSession;
+        ErrorCode? chatError = null;
+
+        lock (_clientsLock)
+        {
+            if (session.GameId is not Guid gameId)
+            {
+                chatError = ErrorCode.NotMatched;
+                gameSession = null;
+            }
+            else if (!_gameSessions.TryGetValue(
+                gameId,
+                out gameSession
+            ) || !gameSession.Contains(session))
+            {
+                chatError = ErrorCode.GameSessionNotFound;
+                gameSession = null;
+            }
+        }
+
+        if (chatError is ErrorCode errorCode)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                errorCode,
+                errorCode == ErrorCode.NotMatched
+                    ? "매칭 완료 후 채팅을 보낼 수 있습니다."
+                    : "게임 세션을 찾을 수 없습니다."
+            );
+            return;
+        }
+
+        if (gameSession is null)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.GameSessionNotFound,
+                "게임 세션을 찾을 수 없습니다."
+            );
+            return;
+        }
+
+        MatchedPlayer sender = CreateMatchedPlayer(session);
+        ClientSession opponent = gameSession.GetOpponent(session);
+        GameChatReceivedEvent chatEvent = new(
+            gameSession.GameId,
+            sender.PlayerId,
+            sender.PlayerName,
+            chatMessage,
+            DateTimeOffset.UtcNow
+        );
+
+        await Task.WhenAll(
+            session.SendAsync(ChatMessage.Create(
+                MessageType.GameChatReceived,
+                message.RequestId,
+                chatEvent
+            )),
+            opponent.SendAsync(ChatMessage.Create(
+                MessageType.GameChatReceived,
+                null,
+                chatEvent
+            ))
+        );
+    }
     private static MatchedPlayer CreateMatchedPlayer(ClientSession session)
     {
         if (session.PlayerId is not Guid playerId ||
