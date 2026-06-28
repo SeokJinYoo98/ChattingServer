@@ -7,9 +7,10 @@ namespace YuJanggiCommon;
 public enum MessageType
 {
     Join,
-    CreateRoom,
-    JoinRoom,
-    Ready,
+    MatchmakingStart,
+    MatchmakingCancel,
+    MatchmakingStatus,
+    MatchFound,
 
     GameStart,
     MoveRequest,

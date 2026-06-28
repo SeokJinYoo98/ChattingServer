@@ -155,15 +155,16 @@ public class YuJanggiServer
         return message.Type switch
         {
             MessageType.Join => HandleJoinAsync(session, message),
-            MessageType.CreateRoom or
-            MessageType.JoinRoom or
-            MessageType.Ready or
+            MessageType.MatchmakingStart or
+            MessageType.MatchmakingCancel or
             MessageType.MoveRequest => SendErrorAsync(
                 session,
                 message.RequestId,
                 ErrorCode.NotImplemented,
                 $"{message.Type} 처리는 아직 구현되지 않았습니다."
             ),
+            MessageType.MatchmakingStatus or
+            MessageType.MatchFound or
             MessageType.GameStart or
             MessageType.MoveResult or
             MessageType.TurnChanged or
