@@ -1,9 +1,9 @@
-using YuJanggiServer;
+using ServerHost = YuJanggiServer.YuJanggiServer;
 public static class Program
 {
     public static async Task Main(string[] args)
     {
-        YuJanggiServer server = new YuJanggiServer(7777);
+        ServerHost server = new ServerHost(7777);
 
         Console.WriteLine("YuJanggi Server Start");
         Console.WriteLine("Port: 7777");
