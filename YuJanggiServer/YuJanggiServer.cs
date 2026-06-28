@@ -159,6 +159,8 @@ public class YuJanggiServer
             MessageType.Ready or
             MessageType.MoveRequest => SendErrorAsync(
                 session,
+                message.RequestId,
+                ErrorCode.NotImplemented,
                 $"{message.Type} 처리는 아직 구현되지 않았습니다."
             ),
             MessageType.GameStart or
@@ -167,10 +169,14 @@ public class YuJanggiServer
             MessageType.GameEnd or
             MessageType.Error => SendErrorAsync(
                 session,
+                message.RequestId,
+                ErrorCode.UnsupportedMessageType,
                 $"클라이언트가 보낼 수 없는 메시지 타입입니다: {message.Type}"
             ),
             _ => SendErrorAsync(
                 session,
+                message.RequestId,
+                ErrorCode.UnsupportedMessageType,
                 $"지원하지 않는 메시지 타입입니다: {message.Type}"
             )
         };
@@ -178,13 +184,15 @@ public class YuJanggiServer
 
     private static Task SendErrorAsync(
         ClientSession session,
-        string content)
+        string? requestId,
+        ErrorCode code,
+        string message)
     {
-        return session.SendAsync(new ChatMessage
-        {
-            Type = MessageType.Error,
-            Content = content
-        });
+        return session.SendAsync(ChatMessage.Create(
+            MessageType.Error,
+            requestId,
+            new ErrorResponse(code, message)
+        ));
     }
 
     public void Stop()

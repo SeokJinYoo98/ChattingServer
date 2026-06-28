@@ -1,4 +1,4 @@
-﻿using System.Buffers.Binary;
+using System.Buffers.Binary;
 using System.Text;
 using System.Text.Json;
 
@@ -23,7 +23,36 @@ public enum MessageType
 public sealed class ChatMessage
 {
     public MessageType Type { get; set; }
-    public string Content { get; set; } = string.Empty;
+    public string? RequestId { get; set; }
+    public JsonElement? Payload { get; set; }
+
+    public static ChatMessage Create<TPayload>(
+        MessageType type,
+        string? requestId,
+        TPayload payload)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+
+        return new ChatMessage
+        {
+            Type = type,
+            RequestId = requestId,
+            Payload = JsonSerializer.SerializeToElement(payload)
+        };
+    }
+
+    public TPayload GetPayload<TPayload>()
+    {
+        if (Payload is not JsonElement payload)
+        {
+            throw new InvalidDataException("메시지 Payload가 없습니다.");
+        }
+
+        return payload.Deserialize<TPayload>()
+            ?? throw new InvalidDataException(
+                $"{typeof(TPayload).Name} Payload를 역직렬화할 수 없습니다."
+            );
+    }
 }
 public static class MessageProtocol
 {
