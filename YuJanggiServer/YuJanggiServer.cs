@@ -187,9 +187,11 @@ public class YuJanggiServer
         ClientSession session,
         ChatMessage message)
     {
+        JoinRequest request;
+
         try
         {
-            _ = message.GetPayload<JoinRequest>();
+            request = message.GetPayload<JoinRequest>();
         }
         catch (Exception exception) when (
             exception is InvalidDataException or JsonException)
@@ -199,6 +201,28 @@ public class YuJanggiServer
                 message.RequestId,
                 ErrorCode.InvalidRequest,
                 "Join Payload 형식이 올바르지 않습니다."
+            );
+        }
+
+        string playerName = request.PlayerName?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(playerName))
+        {
+            return SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.PlayerNameRequired,
+                "플레이어 이름은 필수입니다."
+            );
+        }
+
+        if (playerName.Length > JoinRules.MaxPlayerNameLength)
+        {
+            return SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.PlayerNameTooLong,
+                $"플레이어 이름은 {JoinRules.MaxPlayerNameLength}자 이하여야 합니다."
             );
         }
 
