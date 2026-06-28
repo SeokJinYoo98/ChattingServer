@@ -183,7 +183,7 @@ public class YuJanggiServer
         };
     }
 
-    private static Task HandleJoinAsync(
+    private Task HandleJoinAsync(
         ClientSession session,
         ChatMessage message)
     {
@@ -226,13 +226,42 @@ public class YuJanggiServer
             );
         }
 
-        if (!session.TryJoin(playerName, out Guid playerId))
+        ErrorCode? joinError = null;
+        Guid playerId = default;
+
+        lock (_clientsLock)
         {
+            if (session.IsJoined)
+            {
+                joinError = ErrorCode.AlreadyJoined;
+            }
+            else if (_clients.Any(other =>
+                !ReferenceEquals(other, session) &&
+                string.Equals(
+                    other.PlayerName,
+                    playerName,
+                    StringComparison.OrdinalIgnoreCase
+                )))
+            {
+                joinError = ErrorCode.DuplicatePlayerName;
+            }
+            else if (!session.TryJoin(playerName, out playerId))
+            {
+                joinError = ErrorCode.AlreadyJoined;
+            }
+        }
+
+        if (joinError is ErrorCode errorCode)
+        {
+            string errorMessage = errorCode == ErrorCode.DuplicatePlayerName
+                ? "이미 사용 중인 플레이어 이름입니다."
+                : "이미 참가한 세션입니다.";
+
             return SendErrorAsync(
                 session,
                 message.RequestId,
-                ErrorCode.AlreadyJoined,
-                "이미 참가한 세션입니다."
+                errorCode,
+                errorMessage
             );
         }
 
