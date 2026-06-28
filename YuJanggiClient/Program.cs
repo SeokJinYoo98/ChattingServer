@@ -32,6 +32,11 @@ public static class Program
                 return;
             }
 
+            if (!SelectMatchmaking())
+            {
+                return;
+            }
+
             MatchFoundResponse? match = await MatchmakeAsync(stream);
 
             if (match is null)
@@ -76,6 +81,31 @@ public static class Program
 
         Console.Write("플레이어 이름: ");
         return Console.ReadLine()?.Trim() ?? string.Empty;
+    }
+
+    private static bool SelectMatchmaking()
+    {
+        while (true)
+        {
+            Console.WriteLine();
+            Console.WriteLine("1. 자동 매칭 시작");
+            Console.WriteLine("0. 종료");
+            Console.Write("선택: ");
+
+            string? input = Console.ReadLine()?.Trim();
+
+            if (input == "1")
+            {
+                return true;
+            }
+
+            if (input == "0" || input is null)
+            {
+                return false;
+            }
+
+            Console.WriteLine("1 또는 0을 입력하세요.");
+        }
     }
 
     private static async Task<bool> JoinAsync(
