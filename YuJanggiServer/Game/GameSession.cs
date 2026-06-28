@@ -1,4 +1,4 @@
-using MyServer.Client;
+using YuJanggiServer.Client;
 using YuJanggiCommon;
 using Yujanggi.Core.Board;
 using Yujanggi.Core.Domain;
@@ -7,7 +7,7 @@ using Yujanggi.Core.Rule;
 using CorePieceType = Yujanggi.Core.Domain.PieceType;
 using CorePlayerTeam = Yujanggi.Core.Domain.PlayerTeam;
 
-namespace MyServer.Game;
+namespace YuJanggiServer.Game;
 
 public sealed class GameSession
 {

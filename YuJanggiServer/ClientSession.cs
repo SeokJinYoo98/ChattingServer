@@ -1,7 +1,7 @@
 using System.Net.Sockets;
 using YuJanggiCommon;
 
-namespace MyServer.Client;
+namespace YuJanggiServer.Client;
 
 public sealed class ClientSession : IDisposable
 {

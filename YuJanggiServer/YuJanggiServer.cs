@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
-using MyServer.Client;
-using MyServer.Game;
+using YuJanggiServer.Client;
+using YuJanggiServer.Game;
 using YuJanggiCommon;
 
-namespace MyServer;
+namespace YuJanggiServer;
 
 public class YuJanggiServer
 {

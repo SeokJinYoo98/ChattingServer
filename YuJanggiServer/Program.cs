@@ -1,4 +1,4 @@
-﻿using MyServer;
+using YuJanggiServer;
 public static class Program
 {
     public static async Task Main(string[] args)
