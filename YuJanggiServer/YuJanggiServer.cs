@@ -9,6 +9,7 @@ namespace MyServer;
 public class YuJanggiServer
 {
     private readonly List<ClientSession> _clients = new();
+    private readonly List<MatchmakingEntry> _matchmakingQueue = new();
     private readonly Lock _clientsLock = new();
     private readonly TcpListener _listener;
 
@@ -91,6 +92,7 @@ public class YuJanggiServer
             _isClearingClients = true;
             clients = _clients.ToList();
             _clients.Clear();
+            _matchmakingQueue.Clear();
         }
 
         try
@@ -141,6 +143,9 @@ public class YuJanggiServer
             lock (_clientsLock)
             {
                 _clients.Remove(session);
+                _matchmakingQueue.RemoveAll(entry =>
+                    ReferenceEquals(entry.Session, session)
+                );
             }
 
             session.Dispose();
@@ -155,8 +160,10 @@ public class YuJanggiServer
         return message.Type switch
         {
             MessageType.Join => HandleJoinAsync(session, message),
-            MessageType.MatchmakingStart or
-            MessageType.MatchmakingCancel or
+            MessageType.MatchmakingStart =>
+                HandleMatchmakingStartAsync(session, message),
+            MessageType.MatchmakingCancel =>
+                HandleMatchmakingCancelAsync(session, message),
             MessageType.MoveRequest => SendErrorAsync(
                 session,
                 message.RequestId,
@@ -273,6 +280,188 @@ public class YuJanggiServer
         ));
     }
 
+    private async Task HandleMatchmakingStartAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        try
+        {
+            _ = message.GetPayload<MatchmakingStartRequest>();
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException or JsonException)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.InvalidRequest,
+                "MatchmakingStart Payload 형식이 올바르지 않습니다."
+            );
+            return;
+        }
+
+        ErrorCode? matchmakingError = null;
+        MatchmakingEntry? first = null;
+        MatchmakingEntry? second = null;
+        Guid gameId = default;
+
+        lock (_clientsLock)
+        {
+            if (!session.IsJoined)
+            {
+                matchmakingError = ErrorCode.NotJoined;
+            }
+            else if (session.IsMatched)
+            {
+                matchmakingError = ErrorCode.AlreadyMatched;
+            }
+            else if (_matchmakingQueue.Any(entry =>
+                ReferenceEquals(entry.Session, session)))
+            {
+                matchmakingError = ErrorCode.AlreadyMatchmaking;
+            }
+            else
+            {
+                _matchmakingQueue.Add(new MatchmakingEntry(
+                    session,
+                    message.RequestId
+                ));
+
+                if (_matchmakingQueue.Count >= 2)
+                {
+                    first = _matchmakingQueue[0];
+                    second = _matchmakingQueue[1];
+                    _matchmakingQueue.RemoveRange(0, 2);
+
+                    gameId = Guid.NewGuid();
+                    first.Session.SetMatch(gameId, PlayerSide.Cho);
+                    second.Session.SetMatch(gameId, PlayerSide.Han);
+                }
+            }
+        }
+
+        if (matchmakingError is ErrorCode errorCode)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                errorCode,
+                GetMatchmakingErrorMessage(errorCode)
+            );
+            return;
+        }
+
+        if (first is null || second is null)
+        {
+            await session.SendAsync(ChatMessage.Create(
+                MessageType.MatchmakingStatus,
+                message.RequestId,
+                new MatchmakingStatusResponse(MatchmakingState.Waiting)
+            ));
+            return;
+        }
+
+        MatchedPlayer firstPlayer = CreateMatchedPlayer(first.Session);
+        MatchedPlayer secondPlayer = CreateMatchedPlayer(second.Session);
+
+        await Task.WhenAll(
+            first.Session.SendAsync(ChatMessage.Create(
+                MessageType.MatchFound,
+                first.RequestId,
+                new MatchFoundResponse(
+                    gameId,
+                    secondPlayer,
+                    PlayerSide.Cho
+                )
+            )),
+            second.Session.SendAsync(ChatMessage.Create(
+                MessageType.MatchFound,
+                second.RequestId,
+                new MatchFoundResponse(
+                    gameId,
+                    firstPlayer,
+                    PlayerSide.Han
+                )
+            ))
+        );
+    }
+
+    private Task HandleMatchmakingCancelAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        try
+        {
+            _ = message.GetPayload<MatchmakingCancelRequest>();
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException or JsonException)
+        {
+            return SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.InvalidRequest,
+                "MatchmakingCancel Payload 형식이 올바르지 않습니다."
+            );
+        }
+
+        bool removed;
+
+        lock (_clientsLock)
+        {
+            int index = _matchmakingQueue.FindIndex(entry =>
+                ReferenceEquals(entry.Session, session)
+            );
+
+            removed = index >= 0;
+
+            if (removed)
+            {
+                _matchmakingQueue.RemoveAt(index);
+            }
+        }
+
+        if (!removed)
+        {
+            return SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.NotMatchmaking,
+                GetMatchmakingErrorMessage(ErrorCode.NotMatchmaking)
+            );
+        }
+
+        return session.SendAsync(ChatMessage.Create(
+            MessageType.MatchmakingStatus,
+            message.RequestId,
+            new MatchmakingStatusResponse(MatchmakingState.Cancelled)
+        ));
+    }
+
+    private static MatchedPlayer CreateMatchedPlayer(ClientSession session)
+    {
+        if (session.PlayerId is not Guid playerId ||
+            session.PlayerName is not string playerName)
+        {
+            throw new InvalidOperationException(
+                "참가하지 않은 세션은 매칭될 수 없습니다."
+            );
+        }
+
+        return new MatchedPlayer(playerId, playerName);
+    }
+
+    private static string GetMatchmakingErrorMessage(ErrorCode errorCode)
+    {
+        return errorCode switch
+        {
+            ErrorCode.NotJoined => "참가 완료 후 매칭을 시작할 수 있습니다.",
+            ErrorCode.AlreadyMatchmaking => "이미 매칭 대기 중입니다.",
+            ErrorCode.NotMatchmaking => "매칭 대기 중이 아닙니다.",
+            ErrorCode.AlreadyMatched => "이미 매칭이 완료된 세션입니다.",
+            _ => "매칭 요청을 처리할 수 없습니다."
+        };
+    }
     private static Task SendErrorAsync(
         ClientSession session,
         string? requestId,
@@ -285,6 +474,11 @@ public class YuJanggiServer
             new ErrorResponse(code, message)
         ));
     }
+
+    private sealed record MatchmakingEntry(
+        ClientSession Session,
+        string? RequestId
+    );
 
     public void Stop()
     {

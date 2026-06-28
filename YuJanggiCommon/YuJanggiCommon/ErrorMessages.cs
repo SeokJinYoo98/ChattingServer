@@ -4,6 +4,10 @@ public enum ErrorCode
 {
     InvalidRequest,
     AlreadyJoined,
+    NotJoined,
+    AlreadyMatchmaking,
+    NotMatchmaking,
+    AlreadyMatched,
     UnsupportedMessageType,
     NotImplemented,
     PlayerNameRequired,

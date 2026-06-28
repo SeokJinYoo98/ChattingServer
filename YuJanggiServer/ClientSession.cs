@@ -11,6 +11,9 @@ public sealed class ClientSession : IDisposable
     public Guid? PlayerId { get; private set; }
     public string? PlayerName { get; private set; }
     public bool IsJoined => PlayerId.HasValue;
+    public Guid? GameId { get; private set; }
+    public PlayerSide? Side { get; private set; }
+    public bool IsMatched => GameId.HasValue;
 
     private readonly SemaphoreSlim _sendLock = new(1, 1);
 
@@ -34,6 +37,12 @@ public sealed class ClientSession : IDisposable
         PlayerId = playerId;
         PlayerName = playerName;
         return true;
+    }
+
+    public void SetMatch(Guid gameId, PlayerSide side)
+    {
+        GameId = gameId;
+        Side = side;
     }
 
     public async Task SendAsync(ChatMessage message)
