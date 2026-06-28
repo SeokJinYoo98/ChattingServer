@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
 using MyServer.Client;
 using YuJanggiCommon;
 
@@ -153,7 +154,7 @@ public class YuJanggiServer
     {
         return message.Type switch
         {
-            MessageType.Join or
+            MessageType.Join => HandleJoinAsync(session, message),
             MessageType.CreateRoom or
             MessageType.JoinRoom or
             MessageType.Ready or
@@ -180,6 +181,33 @@ public class YuJanggiServer
                 $"지원하지 않는 메시지 타입입니다: {message.Type}"
             )
         };
+    }
+
+    private static Task HandleJoinAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        try
+        {
+            _ = message.GetPayload<JoinRequest>();
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException or JsonException)
+        {
+            return SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.InvalidRequest,
+                "Join Payload 형식이 올바르지 않습니다."
+            );
+        }
+
+        return SendErrorAsync(
+            session,
+            message.RequestId,
+            ErrorCode.NotImplemented,
+            "Join 처리는 아직 구현되지 않았습니다."
+        );
     }
 
     private static Task SendErrorAsync(
