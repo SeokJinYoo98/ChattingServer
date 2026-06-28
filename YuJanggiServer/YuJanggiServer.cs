@@ -143,6 +143,9 @@ public class YuJanggiServer
         }
         finally
         {
+            ClientSession? opponent = null;
+            Guid? endedGameId = null;
+
             lock (_clientsLock)
             {
                 _clients.Remove(session);
@@ -156,12 +159,35 @@ public class YuJanggiServer
                         out GameSession? gameSession
                     ))
                 {
+                    opponent = gameSession.GetOpponent(session);
+                    endedGameId = gameId;
                     gameSession.ClearPlayers();
                 }
             }
 
             session.Dispose();
             Console.WriteLine($"[Disconnect] {session.ClientInfo}");
+
+            if (opponent is not null && endedGameId is Guid gameId)
+            {
+                try
+                {
+                    await opponent.SendAsync(ChatMessage.Create(
+                        MessageType.GameEnd,
+                        null,
+                        new GameEndEvent(
+                            gameId,
+                            GameEndReason.OpponentLeft,
+                            "상대 플레이어가 채팅방을 나갔습니다."
+                        )
+                    ));
+                }
+                catch (Exception exception) when (
+                    exception is IOException or ObjectDisposedException)
+                {
+                    // 남은 클라이언트도 이미 연결을 종료한 경우
+                }
+            }
         }
     }
 

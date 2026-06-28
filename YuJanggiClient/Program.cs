@@ -52,9 +52,18 @@ public static class Program
             );
             Console.WriteLine("메시지를 입력하세요. 종료: /quit");
 
-            Task receiveTask = ReceiveChatAsync(stream);
-            await SendChatAsync(stream);
+            using CancellationTokenSource chatCancellation = new();
+            Task receiveTask = ReceiveChatAsync(
+                stream,
+                chatCancellation
+            );
 
+            await SendChatAsync(
+                stream,
+                chatCancellation.Token
+            );
+
+            chatCancellation.Cancel();
             client.Close();
             await receiveTask;
         }
@@ -193,35 +202,51 @@ public static class Program
         }
     }
 
-    private static async Task SendChatAsync(NetworkStream stream)
+    private static async Task SendChatAsync(
+        NetworkStream stream,
+        CancellationToken cancellationToken)
     {
-        while (true)
+        try
         {
-            string? input = Console.ReadLine();
-
-            if (input is null ||
-                input.Equals("/quit", StringComparison.OrdinalIgnoreCase))
+            while (true)
             {
-                return;
-            }
+                string? input = await Console.In.ReadLineAsync(
+                    cancellationToken
+                );
 
-            if (string.IsNullOrWhiteSpace(input))
-            {
-                continue;
-            }
+                if (input is null ||
+                    input.Equals(
+                        "/quit",
+                        StringComparison.OrdinalIgnoreCase
+                    ))
+                {
+                    return;
+                }
 
-            await SendAsync(
-                stream,
-                ChatMessage.Create(
-                    MessageType.GameChatSend,
-                    CreateRequestId(),
-                    new GameChatSendRequest(input)
-                )
-            );
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    continue;
+                }
+
+                await SendAsync(
+                    stream,
+                    ChatMessage.Create(
+                        MessageType.GameChatSend,
+                        CreateRequestId(),
+                        new GameChatSendRequest(input)
+                    )
+                );
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 상대 퇴장 알림으로 채팅 입력이 취소된 경우
         }
     }
 
-    private static async Task ReceiveChatAsync(NetworkStream stream)
+    private static async Task ReceiveChatAsync(
+        NetworkStream stream,
+        CancellationTokenSource cancellation)
     {
         try
         {
@@ -239,6 +264,17 @@ public static class Program
                         $"{chat.SenderPlayerName}: {chat.Message}"
                     );
                     continue;
+                }
+
+                if (message.Type == MessageType.GameEnd)
+                {
+                    GameEndEvent gameEnd =
+                        message.GetPayload<GameEndEvent>();
+
+                    Console.WriteLine();
+                    Console.WriteLine($"게임 종료: {gameEnd.Message}");
+                    cancellation.Cancel();
+                    return;
                 }
 
                 if (message.Type == MessageType.Error)
