@@ -205,16 +205,15 @@ public class YuJanggiServer
                 HandleMatchmakingCancelAsync(session, message),
             MessageType.GameChatSend =>
                 HandleGameChatAsync(session, message),
-            MessageType.MoveRequest => SendErrorAsync(
-                session,
-                message.RequestId,
-                ErrorCode.NotImplemented,
-                $"{message.Type} 처리는 아직 구현되지 않았습니다."
-            ),
+            MessageType.LegalMovesRequest =>
+                HandleLegalMovesAsync(session, message),
+            MessageType.MoveRequest =>
+                HandleMoveAsync(session, message),
             MessageType.MatchmakingStatus or
             MessageType.MatchFound or
             MessageType.GameChatReceived or
             MessageType.GameStart or
+            MessageType.LegalMovesResult or
             MessageType.MoveResult or
             MessageType.TurnChanged or
             MessageType.GameEnd or
@@ -507,6 +506,224 @@ public class YuJanggiServer
         ));
     }
 
+    private async Task HandleLegalMovesAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        LegalMovesRequest request;
+
+        try
+        {
+            request = message.GetPayload<LegalMovesRequest>();
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException or JsonException)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.InvalidRequest,
+                "LegalMovesRequest Payload 형식이 올바르지 않습니다."
+            );
+            return;
+        }
+
+        if (request.From is null)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.InvalidRequest,
+                "선택 좌표가 필요합니다."
+            );
+            return;
+        }
+
+        ErrorCode? sessionError =
+            TryGetGameSession(session, out GameSession? gameSession);
+
+        if (sessionError is ErrorCode gameError)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                gameError,
+                GetMoveErrorMessage(gameError)
+            );
+            return;
+        }
+
+        if (gameSession is null)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.GameSessionNotFound,
+                GetMoveErrorMessage(ErrorCode.GameSessionNotFound)
+            );
+            return;
+        }
+
+        ErrorCode? moveError = gameSession.TryGetLegalMoves(
+            session,
+            request.From,
+            out LegalMovesResult? result
+        );
+
+        if (moveError is ErrorCode errorCode || result is null)
+        {
+            ErrorCode responseCode =
+                moveError ?? ErrorCode.InvalidRequest;
+
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                responseCode,
+                GetMoveErrorMessage(responseCode)
+            );
+            return;
+        }
+
+        await session.SendAsync(ChatMessage.Create(
+            MessageType.LegalMovesResult,
+            message.RequestId,
+            result
+        ));
+    }
+
+    private async Task HandleMoveAsync(
+        ClientSession session,
+        ChatMessage message)
+    {
+        MoveRequest request;
+
+        try
+        {
+            request = message.GetPayload<MoveRequest>();
+        }
+        catch (Exception exception) when (
+            exception is InvalidDataException or JsonException)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.InvalidRequest,
+                "MoveRequest Payload 형식이 올바르지 않습니다."
+            );
+            return;
+        }
+
+        if (request.From is null || request.To is null)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.InvalidRequest,
+                "시작 좌표와 도착 좌표가 필요합니다."
+            );
+            return;
+        }
+
+        ErrorCode? sessionError =
+            TryGetGameSession(session, out GameSession? gameSession);
+
+        if (sessionError is ErrorCode gameError)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                gameError,
+                GetMoveErrorMessage(gameError)
+            );
+            return;
+        }
+
+        if (gameSession is null)
+        {
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                ErrorCode.GameSessionNotFound,
+                GetMoveErrorMessage(ErrorCode.GameSessionNotFound)
+            );
+            return;
+        }
+
+        ErrorCode? moveError = gameSession.TryMove(
+            session,
+            request,
+            out MoveResultEvent? result
+        );
+
+        if (moveError is ErrorCode errorCode || result is null)
+        {
+            ErrorCode responseCode =
+                moveError ?? ErrorCode.InvalidRequest;
+
+            await SendErrorAsync(
+                session,
+                message.RequestId,
+                responseCode,
+                GetMoveErrorMessage(responseCode)
+            );
+            return;
+        }
+
+        ClientSession opponent = gameSession.GetOpponent(session);
+
+        await Task.WhenAll(
+            session.SendAsync(ChatMessage.Create(
+                MessageType.MoveResult,
+                message.RequestId,
+                result
+            )),
+            opponent.SendAsync(ChatMessage.Create(
+                MessageType.MoveResult,
+                null,
+                result
+            ))
+        );
+    }
+
+    private ErrorCode? TryGetGameSession(
+        ClientSession session,
+        out GameSession? gameSession)
+    {
+        lock (_clientsLock)
+        {
+            if (session.GameId is not Guid gameId)
+            {
+                gameSession = null;
+                return ErrorCode.NotMatched;
+            }
+
+            if (!_gameSessions.TryGetValue(gameId, out gameSession) ||
+                !gameSession.Contains(session))
+            {
+                gameSession = null;
+                return ErrorCode.GameSessionNotFound;
+            }
+
+            return null;
+        }
+    }
+
+    private static string GetMoveErrorMessage(ErrorCode errorCode)
+    {
+        return errorCode switch
+        {
+            ErrorCode.NotMatched =>
+                "매칭 완료 후 기물을 선택할 수 있습니다.",
+            ErrorCode.GameSessionNotFound =>
+                "게임 세션을 찾을 수 없습니다.",
+            ErrorCode.NotYourTurn => "현재 플레이어의 턴이 아닙니다.",
+            ErrorCode.InvalidPosition => "보드 좌표가 올바르지 않습니다.",
+            ErrorCode.PieceNotFound => "선택한 위치에 기물이 없습니다.",
+            ErrorCode.NotYourPiece => "상대 기물은 선택할 수 없습니다.",
+            ErrorCode.IllegalMove => "이동할 수 없는 위치입니다.",
+            _ => "이동 요청을 처리할 수 없습니다."
+        };
+    }
     private async Task HandleGameChatAsync(
         ClientSession session,
         ChatMessage message)
@@ -620,6 +837,7 @@ public class YuJanggiServer
             ))
         );
     }
+
     private static MatchedPlayer CreateMatchedPlayer(ClientSession session)
     {
         if (session.PlayerId is not Guid playerId ||
@@ -644,6 +862,7 @@ public class YuJanggiServer
             _ => "매칭 요청을 처리할 수 없습니다."
         };
     }
+
     private static Task SendErrorAsync(
         ClientSession session,
         string? requestId,

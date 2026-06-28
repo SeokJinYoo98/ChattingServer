@@ -16,6 +16,8 @@ public enum MessageType
     GameChatReceived,
 
     GameStart,
+    LegalMovesRequest,
+    LegalMovesResult,
     MoveRequest,
     MoveResult,
     TurnChanged,

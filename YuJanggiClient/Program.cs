@@ -59,11 +59,13 @@ public static class Program
                 $"상대: {match.Opponent.PlayerName} | 진영: {match.Side}"
             );
             PrintBoard(gameStart);
-            Console.WriteLine("메시지를 입력하세요. 종료: /quit");
+            Console.WriteLine("명령: select x z | move x z | /quit");
+            Console.WriteLine("그 외 입력은 채팅으로 전송됩니다.");
 
             using CancellationTokenSource chatCancellation = new();
             Task receiveTask = ReceiveChatAsync(
                 stream,
+                gameStart.Side,
                 chatCancellation
             );
 
@@ -234,6 +236,18 @@ public static class Program
 
     private static void PrintBoard(GameStartEvent gameStart)
     {
+        PrintBoard(
+            gameStart.Side,
+            gameStart.CurrentTurn,
+            gameStart.Pieces
+        );
+    }
+
+    private static void PrintBoard(
+        PlayerSide side,
+        PlayerSide currentTurn,
+        IReadOnlyList<BoardPieceState> pieces)
+    {
         const int width = 9;
         const int height = 10;
         string[,] board = new string[height, width];
@@ -246,7 +260,7 @@ public static class Program
             }
         }
 
-        foreach (BoardPieceState piece in gameStart.Pieces)
+        foreach (BoardPieceState piece in pieces)
         {
             if (piece.X < 0 || width <= piece.X ||
                 piece.Z < 0 || height <= piece.Z)
@@ -262,7 +276,7 @@ public static class Program
 
         Console.WriteLine();
         Console.WriteLine(
-            $"내 진영: {gameStart.Side} | 현재 턴: {gameStart.CurrentTurn}"
+            $"내 진영: {side} | 현재 턴: {currentTurn}"
         );
         Console.WriteLine("    0  1  2  3  4  5  6  7  8");
 
@@ -309,6 +323,8 @@ public static class Program
         NetworkStream stream,
         CancellationToken cancellationToken)
     {
+        BoardPosition? selectedPosition = null;
+
         try
         {
             while (true)
@@ -331,6 +347,82 @@ public static class Program
                     continue;
                 }
 
+                string[] parts = input.Split(
+                    ' ',
+                    StringSplitOptions.RemoveEmptyEntries
+                );
+
+                if (TryParsePositionCommand(
+                    parts,
+                    "select",
+                    out BoardPosition selected
+                ))
+                {
+                    selectedPosition = selected;
+
+                    await SendAsync(
+                        stream,
+                        ChatMessage.Create(
+                            MessageType.LegalMovesRequest,
+                            CreateRequestId(),
+                            new LegalMovesRequest(selected)
+                        )
+                    );
+                    continue;
+                }
+
+                if (parts.Length > 0 &&
+                    parts[0].Equals(
+                        "move",
+                        StringComparison.OrdinalIgnoreCase
+                    ))
+                {
+                    if (selectedPosition is null)
+                    {
+                        Console.WriteLine(
+                            "먼저 select x z로 기물을 선택하세요."
+                        );
+                        continue;
+                    }
+
+                    if (!TryParsePositionCommand(
+                        parts,
+                        "move",
+                        out BoardPosition destination
+                    ))
+                    {
+                        Console.WriteLine(
+                            "사용법: move x z"
+                        );
+                        continue;
+                    }
+
+                    await SendAsync(
+                        stream,
+                        ChatMessage.Create(
+                            MessageType.MoveRequest,
+                            CreateRequestId(),
+                            new MoveRequest(
+                                selectedPosition,
+                                destination
+                            )
+                        )
+                    );
+
+                    selectedPosition = null;
+                    continue;
+                }
+
+                if (parts.Length > 0 &&
+                    parts[0].Equals(
+                        "select",
+                        StringComparison.OrdinalIgnoreCase
+                    ))
+                {
+                    Console.WriteLine("사용법: select x z");
+                    continue;
+                }
+
                 await SendAsync(
                     stream,
                     ChatMessage.Create(
@@ -343,12 +435,35 @@ public static class Program
         }
         catch (OperationCanceledException)
         {
-            // 상대 퇴장 알림으로 채팅 입력이 취소된 경우
+            // 상대 퇴장 알림으로 입력이 취소된 경우
         }
+    }
+
+    private static bool TryParsePositionCommand(
+        string[] parts,
+        string command,
+        out BoardPosition position)
+    {
+        position = null!;
+
+        if (parts.Length != 3 ||
+            !parts[0].Equals(
+                command,
+                StringComparison.OrdinalIgnoreCase
+            ) ||
+            !int.TryParse(parts[1], out int x) ||
+            !int.TryParse(parts[2], out int z))
+        {
+            return false;
+        }
+
+        position = new BoardPosition(x, z);
+        return true;
     }
 
     private static async Task ReceiveChatAsync(
         NetworkStream stream,
+        PlayerSide playerSide,
         CancellationTokenSource cancellation)
     {
         try
@@ -356,6 +471,45 @@ public static class Program
             while (true)
             {
                 ChatMessage message = await ReceiveAsync(stream);
+
+                if (message.Type == MessageType.LegalMovesResult)
+                {
+                    LegalMovesResult legalMoves =
+                        message.GetPayload<LegalMovesResult>();
+
+                    string destinations = legalMoves.LegalMoves.Count == 0
+                        ? "없음"
+                        : string.Join(
+                            ", ",
+                            legalMoves.LegalMoves.Select(position =>
+                                $"({position.X}, {position.Z})"
+                            )
+                        );
+
+                    Console.WriteLine(
+                        $"선택 ({legalMoves.From.X}, " +
+                        $"{legalMoves.From.Z}) 이동 가능: " +
+                        destinations
+                    );
+                    continue;
+                }
+
+                if (message.Type == MessageType.MoveResult)
+                {
+                    MoveResultEvent move =
+                        message.GetPayload<MoveResultEvent>();
+
+                    Console.WriteLine(
+                        $"이동: ({move.From.X}, {move.From.Z}) -> " +
+                        $"({move.To.X}, {move.To.Z})"
+                    );
+                    PrintBoard(
+                        playerSide,
+                        move.CurrentTurn,
+                        move.Pieces
+                    );
+                    continue;
+                }
 
                 if (message.Type == MessageType.GameChatReceived)
                 {
