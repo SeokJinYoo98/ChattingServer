@@ -66,6 +66,9 @@ public class MatchModelTests
         var from = new Pos(0, 6);
         var to = new Pos(0, 5);
         match.Board.SetPiece(from, JanggiTestBoard.Piece(PieceType.Chariot, PlayerTeam.Han));
+        match.Board.SetPiece(to, JanggiTestBoard.Piece(PieceType.Soldier, PlayerTeam.Cho));
+        var choScoreChanged = false;
+        match.Score.OnScoreChanged += (team, _) => choScoreChanged |= team == PlayerTeam.Cho;
 
         // Act
         var moved = match.TryMove(from, to);
@@ -73,9 +76,11 @@ public class MatchModelTests
         // Assert
         Assert.IsFalse(moved);
         Assert.AreEqual(PieceType.Chariot, match.Board.GetPiece(from).Type);
-        Assert.IsTrue(match.Board.GetPiece(to).IsNone);
+        Assert.AreEqual(PieceType.Soldier, match.Board.GetPiece(to).Type);
+        Assert.AreEqual(PlayerTeam.Cho, match.Board.GetPiece(to).Team);
         Assert.AreEqual(PlayerTeam.Cho, match.PlayerTurn);
         Assert.AreEqual(0, match.RecordCnt);
+        Assert.IsFalse(choScoreChanged);
     }
 
     [TestMethod]

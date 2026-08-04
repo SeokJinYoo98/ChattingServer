@@ -71,6 +71,9 @@ namespace Yujanggi.Core.Match
             if (!Board.HasPiece(from))
                 return false;
 
+            if (Board.GetPiece(from).Team != Turn.CurrentTeam)
+                return false;
+
             if (!Rule.IsLegalMove(Board, from, to))
                 return false;
 
