@@ -10,8 +10,8 @@ YuJanggi는 C# TCP 서버와 기존 Unity 장기 게임을 연결하는 온라�
 | `YuJanggiServer` | TCP 접속, 클라이언트 세션 및 게임 진행 관리 |
 | `YuJanggiClient` | 서버 통신을 확인하기 위한 콘솔 클라이언트 |
 | `YuJanggiCommon` | 서버와 클라이언트가 공유하는 메시지 타입과 패킷 프로토콜 |
-| `YuJanggi` | 서버에서 사용하는 장기 코어 코드 |
-| `D:\Git\YuJanggi` | Unity 6.3 기반 장기 클라이언트 별도 저장소 |
+| `Core` | [YuJanggi.Core](https://github.com/SeokJinYoo98/YuJanggi.Core) submodule. 서버와 Unity가 공유하는 장기 규칙과 상태 모델 |
+| [YuJanggi](https://github.com/SeokJinYoo98/YuJanggi) | Unity 6.3 기반 장기 클라이언트 별도 저장소 |
 
 ## 현재 구현 상태
 
@@ -42,7 +42,13 @@ YuJanggi는 C# TCP 서버와 기존 Unity 장기 게임을 연결하는 온라�
 - C#
 - Unity 6000.3.1f1
 
-서버 저장소의 .NET 프로젝트는 `net10.0`을 대상으로 합니다. Unity 프로젝트는 별도 저장소에서 관리되며, 양쪽에 존재하는 장기 Core 코드의 단일 원본과 동기화 방법을 정해야 합니다. `net10.0` DLL을 Unity에서 직접 참조하는 방식은 사용하지 않습니다.
+서버 저장소의 .NET 프로젝트는 `net10.0`을 대상으로 합니다. 공용 장기 규칙은 `Core` submodule의 `YuJanggi.Core.csproj`를 참조하며, Unity 프로젝트는 같은 저장소의 커밋을 Git UPM 패키지로 고정해 사용합니다. `net10.0` DLL을 Unity에서 직접 참조하지 않습니다.
+
+저장소를 받은 뒤 submodule을 초기화합니다.
+
+```powershell
+git submodule update --init --recursive
+```
 
 ## 실행
 

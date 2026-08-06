@@ -11,9 +11,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiCommon", "YuJanggiC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiClient", "YuJanggiClient\YuJanggiClient.csproj", "{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiCore", "YuJanggiCore\YuJanggiCore.csproj", "{66BD5CCB-C7B2-4972-BFFB-C485B22CEE26}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggi.Core", "Core\YuJanggi.Core.csproj", "{66BD5CCB-C7B2-4972-BFFB-C485B22CEE26}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiCore.Tests", "YuJanggiCore.Tests\YuJanggiCore.Tests.csproj", "{804E4127-40C8-4468-8214-B0E636D08FD7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggi.Core.Tests", "Core\Tests~\YuJanggi.Core.Tests.csproj", "{804E4127-40C8-4468-8214-B0E636D08FD7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
