@@ -37,7 +37,10 @@ public sealed class ChatMessage
         string? requestId,
         TPayload payload)
     {
-        ArgumentNullException.ThrowIfNull(payload);
+        if (payload is null)
+        {
+            throw new ArgumentNullException(nameof(payload));
+        }
 
         return new ChatMessage
         {
@@ -70,7 +73,10 @@ public static class MessageProtocol
 
     public static byte[] Encode(ChatMessage message)
     {
-        ArgumentNullException.ThrowIfNull(message);
+        if (message is null)
+        {
+            throw new ArgumentNullException(nameof(message));
+        }
 
         byte[] body = JsonSerializer.SerializeToUtf8Bytes(message);
 
