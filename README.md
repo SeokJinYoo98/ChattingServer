@@ -12,6 +12,8 @@
 
 - **매칭:** 참가, 매칭 시작과 취소, 초와 한 진영 배정
 
+  매칭되면 두 클라이언트에 초와 한의 이름을 같은 텍스트로 전달합니다.
+
 - **대국:** 합법 수 조회, 이동 검증, 전체 보드 상태 전송
 
 - **채팅:** 같은 대국에 참가한 플레이어 간 메시지 전송
@@ -52,6 +54,12 @@ dotnet run --project .\YuJanggiClient\YuJanggiClient.csproj
 ```
 
 서버는 TCP 7777 포트를 사용합니다.
+
+매칭 안내와 기존 메시지 호환성 테스트를 실행합니다.
+
+```powershell
+dotnet test .\Tests\YuJanggi.Server.Tests.csproj
+```
 
 ## 통신 방식
 

@@ -29,4 +29,7 @@ public sealed record MatchFoundResponse(
     Guid GameId,
     MatchedPlayer Opponent,
     PlayerSide Side
-);
+)
+{
+    public string Message { get; init; } = string.Empty;
+}

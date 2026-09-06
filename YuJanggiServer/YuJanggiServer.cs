@@ -411,6 +411,7 @@ public class YuJanggiServer
 
         MatchedPlayer firstPlayer = CreateMatchedPlayer(first.Session);
         MatchedPlayer secondPlayer = CreateMatchedPlayer(second.Session);
+        string matchMessage = $"초: {firstPlayer.PlayerName}\n한: {secondPlayer.PlayerName}";
 
         await Task.WhenAll(
             first.Session.SendAsync(ChatMessage.Create(
@@ -421,6 +422,9 @@ public class YuJanggiServer
                     secondPlayer,
                     PlayerSide.Cho
                 )
+                {
+                    Message = matchMessage
+                }
             )),
             second.Session.SendAsync(ChatMessage.Create(
                 MessageType.MatchFound,
@@ -430,6 +434,9 @@ public class YuJanggiServer
                     firstPlayer,
                     PlayerSide.Han
                 )
+                {
+                    Message = matchMessage
+                }
             ))
         );
 
