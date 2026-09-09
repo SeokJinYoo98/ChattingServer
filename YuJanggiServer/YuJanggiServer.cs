@@ -14,13 +14,20 @@ public class YuJanggiServer
     private readonly Dictionary<Guid, GameSession> _gameSessions = new();
     private readonly Lock _clientsLock = new();
     private readonly TcpListener _listener;
+    private readonly Random _matchmakingRandom;
 
     private bool _isRunning;
     private bool _isClearingClients;
 
     public YuJanggiServer(int port)
+        : this(port, Random.Shared)
+    {
+    }
+
+    internal YuJanggiServer(int port, Random matchmakingRandom)
     {
         _listener = new TcpListener(IPAddress.Any, port);
+        _matchmakingRandom = matchmakingRandom;
     }
 
     public async Task StartAsync()
@@ -374,6 +381,12 @@ public class YuJanggiServer
                     first = _matchmakingQueue[0];
                     second = _matchmakingQueue[1];
                     _matchmakingQueue.RemoveRange(0, 2);
+
+                    // 대기 순서는 유지하되 진영만 추첨합니다. 이후 first는 초, second는 한입니다.
+                    if (_matchmakingRandom.Next(2) == 1)
+                    {
+                        (first, second) = (second, first);
+                    }
 
                     gameId = Guid.NewGuid();
                     first.Session.SetMatch(gameId, PlayerSide.Cho);

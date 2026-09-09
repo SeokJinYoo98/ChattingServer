@@ -9,15 +9,18 @@ namespace YuJanggiServer.Tests;
 public sealed class MatchmakingNoticeTests
 {
     [DataTestMethod]
-    [DataRow("클라B", "클라A")]
-    [DataRow("클라A", "클라B")]
-    public async Task MatchedClientsReceiveSameTextWithActualSides(string choName, string hanName)
+    [DataRow(0)]
+    [DataRow(1)]
+    public async Task MatchedClientsReceiveSameTextWithActualSides(int draw)
     {
+        string choName = draw == 0 ? "클라B" : "클라A";
+        string hanName = draw == 0 ? "클라A" : "클라B";
         using var reservation = new TcpListener(IPAddress.Loopback, 0);
         reservation.Start();
         int port = ((IPEndPoint)reservation.LocalEndpoint).Port;
         reservation.Stop();
-        var server = new YuJanggiServer(port);
+        var random = new FixedRandom(draw);
+        var server = new YuJanggiServer(port, random);
         Task running = server.StartAsync();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         CancellationToken token = timeout.Token;
@@ -34,17 +37,21 @@ public sealed class MatchmakingNoticeTests
             await Send(han, MessageType.Join, new JoinRequest(hanName), token);
             await Receive<JoinResponse>(han, MessageType.Join, token);
 
-            await Send(cho, MessageType.MatchmakingStart, new MatchmakingStartRequest(), token);
-            var waiting = await Receive<MatchmakingStatusResponse>(cho, MessageType.MatchmakingStatus, token);
+            // 추첨이 뒤집혀도 클라B가 항상 먼저 대기하도록 합니다.
+            NetworkStream first = draw == 0 ? cho : han;
+            NetworkStream second = draw == 0 ? han : cho;
+            await Send(first, MessageType.MatchmakingStart, new MatchmakingStartRequest(), token);
+            var waiting = await Receive<MatchmakingStatusResponse>(first, MessageType.MatchmakingStatus, token);
             Assert.AreEqual(MatchmakingState.Waiting, waiting.State);
             // 대기를 취소한 연결도 다시 매칭에 참가할 수 있어야 합니다.
-            await Send(cho, MessageType.MatchmakingCancel, new MatchmakingCancelRequest(), token);
-            var cancelled = await Receive<MatchmakingStatusResponse>(cho, MessageType.MatchmakingStatus, token);
+            await Send(first, MessageType.MatchmakingCancel, new MatchmakingCancelRequest(), token);
+            var cancelled = await Receive<MatchmakingStatusResponse>(first, MessageType.MatchmakingStatus, token);
             Assert.AreEqual(MatchmakingState.Cancelled, cancelled.State);
-            await Send(cho, MessageType.MatchmakingStart, new MatchmakingStartRequest(), token);
-            await Receive<MatchmakingStatusResponse>(cho, MessageType.MatchmakingStatus, token);
+            await Send(first, MessageType.MatchmakingStart, new MatchmakingStartRequest(), token);
+            await Receive<MatchmakingStatusResponse>(first, MessageType.MatchmakingStatus, token);
+            Assert.AreEqual(0, random.CallCount);
 
-            await Send(han, MessageType.MatchmakingStart, new MatchmakingStartRequest(), token);
+            await Send(second, MessageType.MatchmakingStart, new MatchmakingStartRequest(), token);
             var choMatch = await Receive<MatchFoundResponse>(cho, MessageType.MatchFound, token);
             var hanMatch = await Receive<MatchFoundResponse>(han, MessageType.MatchFound, token);
             Assert.AreEqual($"초: {choName}\n한: {hanName}", choMatch.Message);
@@ -60,6 +67,17 @@ public sealed class MatchmakingNoticeTests
             Assert.AreEqual(hanMatch.GameId, hanStart.GameId);
             Assert.AreEqual(choMatch.Side, choStart.Side);
             Assert.AreEqual(hanMatch.Side, hanStart.Side);
+            Assert.AreEqual(PlayerSide.Cho, choStart.CurrentTurn);
+            Assert.AreEqual(PlayerSide.Cho, hanStart.CurrentTurn);
+            Assert.AreEqual(1, random.CallCount);
+
+            // 안내뿐 아니라 실제 서버의 턴 권한도 추첨 결과를 따라야 합니다.
+            var legalMovesRequest = new LegalMovesRequest(new BoardPosition(0, 3));
+            await Send(cho, MessageType.LegalMovesRequest, legalMovesRequest, token);
+            await Receive<LegalMovesResult>(cho, MessageType.LegalMovesResult, token);
+            await Send(han, MessageType.LegalMovesRequest, legalMovesRequest, token);
+            var error = await Receive<ErrorResponse>(han, MessageType.Error, token);
+            Assert.AreEqual(ErrorCode.NotYourTurn, error.Code);
         }
         finally
         {
@@ -110,4 +128,16 @@ public sealed class MatchmakingNoticeTests
     }
 
     public sealed record LegacyMatchFound(Guid GameId, MatchedPlayer Opponent, PlayerSide Side);
+
+    private sealed class FixedRandom(int result) : Random
+    {
+        public int CallCount { get; private set; }
+
+        public override int Next(int maxValue)
+        {
+            Assert.AreEqual(2, maxValue);
+            CallCount++;
+            return result;
+        }
+    }
 }
