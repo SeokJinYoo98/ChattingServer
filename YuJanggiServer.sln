@@ -1,13 +1,9 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiServer", "YuJanggiServer\YuJanggiServer.csproj", "{A88DD8F2-7974-4B4E-BF2E-4ACC7F2395EE}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "YuJanggiCommon", "YuJanggiCommon", "{9CB09BA1-D270-CC4D-44FB-26E31924BF10}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiCommon", "YuJanggiCommon\YuJanggiCommon\YuJanggiCommon.csproj", "{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YuJanggiClient", "YuJanggiClient\YuJanggiClient.csproj", "{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}"
 EndProject
@@ -37,18 +33,6 @@ Global
 		{A88DD8F2-7974-4B4E-BF2E-4ACC7F2395EE}.Release|x64.Build.0 = Release|Any CPU
 		{A88DD8F2-7974-4B4E-BF2E-4ACC7F2395EE}.Release|x86.ActiveCfg = Release|Any CPU
 		{A88DD8F2-7974-4B4E-BF2E-4ACC7F2395EE}.Release|x86.Build.0 = Release|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Debug|x64.Build.0 = Debug|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Debug|x86.Build.0 = Debug|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Release|x64.ActiveCfg = Release|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Release|x64.Build.0 = Release|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Release|x86.ActiveCfg = Release|Any CPU
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54}.Release|x86.Build.0 = Release|Any CPU
 		{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{49A9AF33-E75A-4DB4-9918-56E423E4E9B9}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -90,6 +74,5 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{E7650067-6FB0-48CF-BAF2-A399FC2EBF54} = {9CB09BA1-D270-CC4D-44FB-26E31924BF10}
 	EndGlobalSection
 EndGlobal

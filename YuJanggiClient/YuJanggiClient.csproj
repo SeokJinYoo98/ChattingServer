@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\YuJanggiCommon\YuJanggiCommon\YuJanggiCommon.csproj" />
+    <Reference Include="YuJanggiCommon"><HintPath>..\lib\YuJanggiCommon\YuJanggiCommon.dll</HintPath><Private>true</Private></Reference>
   </ItemGroup>
 
   <PropertyGroup>

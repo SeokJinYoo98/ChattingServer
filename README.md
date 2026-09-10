@@ -299,3 +299,7 @@ JSON 본문의 최대 크기는 4 KiB입니다.
 - 정상 종료, 기권, 시간패의 전체 네트워크 흐름은 추가 구현이 필요합니다.
 
 - Core는 Git submodule로 관리하므로 Unity와 같은 검증된 커밋을 사용해야 합니다.
+
+## 공용 통신 계약 DLL
+
+통신 계약 소스는 별도 로컬 저장소 D:\Git\YuJanggi.Protocol에서 관리합니다. 서버와 콘솔 클라이언트는 lib/YuJanggiCommon의 .NET 10 DLL을 사용합니다. 기존 YuJanggiCommon 소스 프로젝트는 제거했습니다. Protocol 저장소의 Publish-Protocol.ps1로 서버·Unity DLL과 protocol-version.json을 함께 갱신하고, 서버 테스트를 실행한 뒤 관련 산출물을 함께 커밋합니다.

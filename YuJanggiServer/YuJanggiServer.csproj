@@ -1,8 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <InternalsVisibleTo Include="YuJanggi.Server.Tests" />
-    <ProjectReference Include="..\YuJanggiCommon\YuJanggiCommon\YuJanggiCommon.csproj" />
+    <Reference Include="YuJanggiCommon"><HintPath>..\lib\YuJanggiCommon\YuJanggiCommon.dll</HintPath><Private>true</Private></Reference>
     <ProjectReference Include="..\Core\YuJanggi.Core.csproj" />
   </ItemGroup>
 
