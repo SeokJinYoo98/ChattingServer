@@ -21,7 +21,11 @@ public enum ErrorCode
     NotImplemented,
     PlayerNameRequired,
     PlayerNameTooLong,
-    DuplicatePlayerName
+    DuplicatePlayerName,
+    GameNotStarted,
+    InvalidFormation,
+    FormationAlreadySelected,
+    GameAlreadyStarted
 }
 
 public sealed record ErrorResponse(

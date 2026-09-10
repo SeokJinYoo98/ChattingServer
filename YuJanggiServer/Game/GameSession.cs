@@ -1,273 +1,196 @@
-using YuJanggiServer.Client;
 using YuJanggiCommon;
-using Yujanggi.Core.Board;
-using Yujanggi.Core.Domain;
-using Yujanggi.Core.Match;
-using Yujanggi.Core.Rule;
-using CorePieceType = Yujanggi.Core.Domain.PieceType;
-using CorePlayerTeam = Yujanggi.Core.Domain.PlayerTeam;
+using YuJanggiServer.Models;
 
 namespace YuJanggiServer.Game;
 
 public sealed class GameSession
 {
     public Guid GameId { get; }
-    public ClientSession ChoPlayer { get; }
-    public ClientSession HanPlayer { get; }
-    public MatchModel Match { get; }
+    public PlayerSession ChoPlayer { get; }
+    public PlayerSession HanPlayer { get; }
 
+    private readonly IJanggiGameEngine _engine;
     private readonly Lock _gameLock = new();
+    private GameFormation? _choFormation;
+    private GameFormation? _hanFormation;
+    private bool _matchAnnounced;
+    private bool _started;
+    private bool _closed;
 
     public GameSession(
         Guid gameId,
-        ClientSession choPlayer,
-        ClientSession hanPlayer)
+        PlayerSession choPlayer,
+        PlayerSession hanPlayer,
+        IJanggiGameEngine engine,
+        bool choSelectsFormation = false,
+        bool hanSelectsFormation = false)
     {
         GameId = gameId;
         ChoPlayer = choPlayer;
         HanPlayer = hanPlayer;
-        Match = new MatchModel(
-            new Turn(0),
-            new Record(),
-            new Score(),
-            new BoardModel(),
-            new JanggiRule()
-        );
+        _engine = engine;
+        _choFormation = choSelectsFormation ? null : GameFormation.EHHE;
+        _hanFormation = hanSelectsFormation ? null : GameFormation.EHHE;
+    }
 
-        Match.InitGame(Formation.EHHE, Formation.EHHE);
-        Match.BindEvents();
-        Match.StartGame();
+    public bool AnnounceMatch()
+    {
+        lock (_gameLock)
+        {
+            _matchAnnounced = true;
+            return TryStart();
+        }
+    }
+
+    public ErrorCode? TrySelectFormation(
+        PlayerSession session,
+        SelectFormationRequest request,
+        out bool started)
+    {
+        lock (_gameLock)
+        {
+            started = false;
+            if (_closed || !Contains(session) || request.GameId != GameId)
+                return ErrorCode.GameSessionNotFound;
+            if (_started)
+                return ErrorCode.GameAlreadyStarted;
+            if (!Enum.IsDefined(typeof(GameFormation), request.Formation))
+                return ErrorCode.InvalidFormation;
+
+            if (ReferenceEquals(session, ChoPlayer))
+            {
+                if (_choFormation.HasValue)
+                    return ErrorCode.FormationAlreadySelected;
+                _choFormation = request.Formation;
+            }
+            else
+            {
+                if (_hanFormation.HasValue)
+                    return ErrorCode.FormationAlreadySelected;
+                _hanFormation = request.Formation;
+            }
+
+            started = TryStart();
+            return null;
+        }
     }
 
     public GameStartEvent CreateGameStart(PlayerSide side)
     {
         lock (_gameLock)
         {
+            if (!_started)
+                throw new InvalidOperationException("포진 선택이 완료되지 않았습니다.");
+
             return new GameStartEvent(
                 GameId,
                 side,
-                ToPlayerSide(Match.PlayerTurn),
-                CreateBoardSnapshot()
-            );
+                _engine.CurrentTurn,
+                _engine.CreateSnapshot())
+            {
+                ChoFormation = _choFormation!.Value,
+                HanFormation = _hanFormation!.Value
+            };
         }
     }
 
     public ErrorCode? TryGetLegalMoves(
-        ClientSession session,
+        PlayerSession session,
         BoardPosition from,
         out LegalMovesResult? result)
     {
         lock (_gameLock)
         {
             result = null;
-            Pos fromPosition = new(from.X, from.Z);
-            ErrorCode? validationError =
-                ValidateMoveSource(session, fromPosition);
+            ErrorCode? sessionError = ValidateSession(session);
+            if (sessionError.HasValue)
+                return sessionError;
 
-            if (validationError.HasValue)
-            {
-                return validationError;
-            }
-
-            Selection selection = new()
-            {
-                FromPos = fromPosition
-            };
-
-            Match.Rule.FindWays(Match.Board, selection);
-
-            result = new LegalMovesResult(
-                from,
-                selection.LegalCells
-                    .Select(position =>
-                        new BoardPosition(position.X, position.Z)
-                    )
-                    .ToList()
-            );
-            return null;
+            return _engine.TryGetLegalMoves(session.Side!.Value, from, out result);
         }
     }
 
     public ErrorCode? TryMove(
-        ClientSession session,
+        PlayerSession session,
         MoveRequest request,
         out MoveResultEvent? result)
     {
         lock (_gameLock)
         {
             result = null;
-            Pos from = new(request.From.X, request.From.Z);
-            Pos to = new(request.To.X, request.To.Z);
-            ErrorCode? validationError =
-                ValidateMoveSource(session, from);
+            ErrorCode? sessionError = ValidateSession(session);
+            if (sessionError.HasValue)
+                return sessionError;
 
-            if (validationError.HasValue)
-            {
-                return validationError;
-            }
+            ErrorCode? moveError = _engine.TryMove(
+                session.Side!.Value,
+                request,
+                out EngineMoveResult? move);
 
-            if (!Match.Board.IsInside(to))
-            {
-                return ErrorCode.InvalidPosition;
-            }
-
-            if (!Match.TryMove(from, to))
-            {
-                return ErrorCode.IllegalMove;
-            }
-
-            PlayerSide movedBy = session.Side
-                ?? throw new InvalidOperationException(
-                    "매칭된 세션에 진영 정보가 없습니다."
-                );
+            if (moveError.HasValue || move is null)
+                return moveError ?? ErrorCode.InvalidRequest;
 
             result = new MoveResultEvent(
                 GameId,
-                request.From,
-                request.To,
-                movedBy,
-                ToPlayerSide(Match.PlayerTurn),
-                CreateBoardSnapshot()
-            );
+                move.From,
+                move.To,
+                move.MovedBy,
+                move.CurrentTurn,
+                move.Pieces);
             return null;
         }
     }
 
-    public bool Contains(ClientSession session)
+    public bool Contains(PlayerSession session)
     {
-        return ReferenceEquals(ChoPlayer, session) ||
-            ReferenceEquals(HanPlayer, session);
+        return ReferenceEquals(ChoPlayer, session) || ReferenceEquals(HanPlayer, session);
     }
 
-    public ClientSession GetOpponent(ClientSession session)
+    public PlayerSession GetOpponent(PlayerSession session)
     {
         if (ReferenceEquals(ChoPlayer, session))
-        {
             return HanPlayer;
-        }
-
         if (ReferenceEquals(HanPlayer, session))
-        {
             return ChoPlayer;
-        }
 
-        throw new InvalidOperationException(
-            "게임에 참가하지 않은 세션입니다."
-        );
+        throw new InvalidOperationException("게임에 참가하지 않은 세션입니다.");
     }
 
     public void ClearPlayers()
     {
         lock (_gameLock)
         {
-            Match.UnBindEvents();
+            if (_closed)
+                return;
+
+            _closed = true;
+            _engine.Close();
             ChoPlayer.ClearMatch();
             HanPlayer.ClearMatch();
         }
     }
 
-    private ErrorCode? ValidateMoveSource(
-        ClientSession session,
-        Pos from)
+    private bool TryStart()
     {
-        if (!Contains(session) ||
-            session.Side is not PlayerSide playerSide)
-        {
+        if (_closed || _started || !_matchAnnounced ||
+            !_choFormation.HasValue || !_hanFormation.HasValue)
+            return false;
+
+        _engine.Initialize(_choFormation.Value, _hanFormation.Value);
+        _engine.Start();
+        _started = true;
+        return true;
+    }
+
+    private ErrorCode? ValidateSession(PlayerSession session)
+    {
+        if (!Contains(session) || session.Side is null)
             return ErrorCode.GameSessionNotFound;
-        }
-
-        CorePlayerTeam playerTeam = ToCorePlayerTeam(playerSide);
-
-        if (Match.PlayerTurn != playerTeam)
-        {
-            return ErrorCode.NotYourTurn;
-        }
-
-        if (!Match.Board.IsInside(from))
-        {
-            return ErrorCode.InvalidPosition;
-        }
-
-        if (!Match.Board.HasPiece(from))
-        {
-            return ErrorCode.PieceNotFound;
-        }
-
-        if (Match.Board.GetPiece(from).Team != playerTeam)
-        {
-            return ErrorCode.NotYourPiece;
-        }
+        if (_closed)
+            return ErrorCode.GameSessionNotFound;
+        if (!_started)
+            return ErrorCode.GameNotStarted;
 
         return null;
-    }
-
-    private List<BoardPieceState> CreateBoardSnapshot()
-    {
-        List<BoardPieceState> pieces = new();
-
-        for (int x = 0; x < Match.Board.WIDTH; x++)
-        {
-            for (int z = 0; z < Match.Board.HEIGHT; z++)
-            {
-                Pos position = new(x, z);
-
-                if (!Match.Board.HasPiece(position))
-                {
-                    continue;
-                }
-
-                PieceModel piece = Match.Board.GetPiece(position);
-                pieces.Add(new BoardPieceState(
-                    piece.Id,
-                    x,
-                    z,
-                    ToPlayerSide(piece.Team),
-                    ToGamePieceType(piece.Type)
-                ));
-            }
-        }
-
-        return pieces;
-    }
-
-    private static PlayerSide ToPlayerSide(CorePlayerTeam team)
-    {
-        return team switch
-        {
-            CorePlayerTeam.Cho => PlayerSide.Cho,
-            CorePlayerTeam.Han => PlayerSide.Han,
-            _ => throw new InvalidOperationException(
-                $"지원하지 않는 진영입니다: {team}"
-            )
-        };
-    }
-
-    private static CorePlayerTeam ToCorePlayerTeam(PlayerSide side)
-    {
-        return side switch
-        {
-            PlayerSide.Cho => CorePlayerTeam.Cho,
-            PlayerSide.Han => CorePlayerTeam.Han,
-            _ => throw new InvalidOperationException(
-                $"지원하지 않는 진영입니다: {side}"
-            )
-        };
-    }
-
-    private static GamePieceType ToGamePieceType(CorePieceType pieceType)
-    {
-        return pieceType switch
-        {
-            CorePieceType.King => GamePieceType.King,
-            CorePieceType.Chariot => GamePieceType.Chariot,
-            CorePieceType.Cannon => GamePieceType.Cannon,
-            CorePieceType.Horse => GamePieceType.Horse,
-            CorePieceType.Elephant => GamePieceType.Elephant,
-            CorePieceType.Guard => GamePieceType.Guard,
-            CorePieceType.Soldier => GamePieceType.Soldier,
-            _ => throw new InvalidOperationException(
-                $"지원하지 않는 기물입니다: {pieceType}"
-            )
-        };
     }
 }

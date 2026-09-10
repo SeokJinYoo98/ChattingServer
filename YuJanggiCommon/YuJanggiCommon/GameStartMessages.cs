@@ -24,4 +24,8 @@ public sealed record GameStartEvent(
     PlayerSide Side,
     PlayerSide CurrentTurn,
     IReadOnlyList<BoardPieceState> Pieces
-);
+)
+{
+    public GameFormation ChoFormation { get; init; } = GameFormation.EHHE;
+    public GameFormation HanFormation { get; init; } = GameFormation.EHHE;
+}

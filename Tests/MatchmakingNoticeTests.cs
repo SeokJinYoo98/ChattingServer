@@ -110,6 +110,88 @@ public sealed class MatchmakingNoticeTests
         Assert.AreEqual(match.Opponent, legacy.Opponent);
     }
 
+    [TestMethod]
+    public async Task GameStartsAfterBothRequestedFormationsAreSelected()
+    {
+        using var reservation = new TcpListener(IPAddress.Loopback, 0);
+        reservation.Start();
+        int port = ((IPEndPoint)reservation.LocalEndpoint).Port;
+        reservation.Stop();
+        var server = new YuJanggiServer(port, new FixedRandom(0));
+        Task running = server.StartAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        CancellationToken token = timeout.Token;
+        using var choClient = new TcpClient();
+        using var hanClient = new TcpClient();
+
+        try
+        {
+            await choClient.ConnectAsync(IPAddress.Loopback, port, token);
+            await hanClient.ConnectAsync(IPAddress.Loopback, port, token);
+            NetworkStream cho = choClient.GetStream();
+            NetworkStream han = hanClient.GetStream();
+
+            await Send(cho, MessageType.Join, new JoinRequest("초"), token);
+            await Receive<JoinResponse>(cho, MessageType.Join, token);
+            await Send(han, MessageType.Join, new JoinRequest("한"), token);
+            await Receive<JoinResponse>(han, MessageType.Join, token);
+
+            var request = new MatchmakingStartRequest { SelectFormation = true };
+            await Send(cho, MessageType.MatchmakingStart, request, token);
+            await Receive<MatchmakingStatusResponse>(cho, MessageType.MatchmakingStatus, token);
+            await Send(han, MessageType.MatchmakingStart, request, token);
+            MatchFoundResponse choMatch =
+                await Receive<MatchFoundResponse>(cho, MessageType.MatchFound, token);
+            MatchFoundResponse hanMatch =
+                await Receive<MatchFoundResponse>(han, MessageType.MatchFound, token);
+            Assert.IsTrue(choMatch.RequiresFormationSelection);
+            Assert.IsTrue(hanMatch.RequiresFormationSelection);
+
+            await Send(
+                cho,
+                MessageType.SelectFormation,
+                new SelectFormationRequest(choMatch.GameId, GameFormation.HEHE),
+                token);
+            await Receive<FormationSelectedResponse>(
+                cho,
+                MessageType.FormationSelected,
+                token);
+
+            await Send(
+                cho,
+                MessageType.LegalMovesRequest,
+                new LegalMovesRequest(new BoardPosition(0, 3)),
+                token);
+            ErrorResponse notStarted =
+                await Receive<ErrorResponse>(cho, MessageType.Error, token);
+            Assert.AreEqual(ErrorCode.GameNotStarted, notStarted.Code);
+
+            await Send(
+                han,
+                MessageType.SelectFormation,
+                new SelectFormationRequest(hanMatch.GameId, GameFormation.EHEH),
+                token);
+            await Receive<FormationSelectedResponse>(
+                han,
+                MessageType.FormationSelected,
+                token);
+            GameStartEvent choStart =
+                await Receive<GameStartEvent>(cho, MessageType.GameStart, token);
+            GameStartEvent hanStart =
+                await Receive<GameStartEvent>(han, MessageType.GameStart, token);
+
+            Assert.AreEqual(GameFormation.HEHE, choStart.ChoFormation);
+            Assert.AreEqual(GameFormation.EHEH, choStart.HanFormation);
+            Assert.AreEqual(choStart.ChoFormation, hanStart.ChoFormation);
+            Assert.AreEqual(choStart.HanFormation, hanStart.HanFormation);
+        }
+        finally
+        {
+            server.Stop();
+            await running.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
     private static async Task Send<T>(NetworkStream stream, MessageType type, T payload, CancellationToken token)
     {
         byte[] packet = MessageProtocol.Encode(ChatMessage.Create(type, Guid.NewGuid().ToString("N"), payload));

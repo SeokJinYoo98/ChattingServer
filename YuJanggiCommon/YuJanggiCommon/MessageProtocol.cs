@@ -23,7 +23,9 @@ public enum MessageType
     TurnChanged,
     GameEnd,
 
-    Error
+    Error,
+    SelectFormation,
+    FormationSelected
 }
 
 public sealed class ChatMessage

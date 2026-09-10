@@ -12,7 +12,10 @@ public enum PlayerSide
     Han
 }
 
-public sealed record MatchmakingStartRequest();
+public sealed record MatchmakingStartRequest()
+{
+    public bool SelectFormation { get; init; }
+}
 
 public sealed record MatchmakingCancelRequest();
 
@@ -32,4 +35,11 @@ public sealed record MatchFoundResponse(
 )
 {
     public string Message { get; init; } = string.Empty;
+    public bool RequiresFormationSelection { get; init; }
 }
+
+public enum GameFormation { HEHE, EHEH, EHHE, HEEH }
+
+public sealed record SelectFormationRequest(Guid GameId, GameFormation Formation);
+
+public sealed record FormationSelectedResponse(Guid GameId, GameFormation Formation);
